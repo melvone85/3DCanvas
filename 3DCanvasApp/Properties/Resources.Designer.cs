@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace CanvasTest.Properties {
+namespace Canvas3DViewer.Properties {
     using System;
     
     

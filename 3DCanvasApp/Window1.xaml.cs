@@ -1,4 +1,5 @@
-﻿using Microsoft.Win32;
+﻿using Canvas3DViewer.Converters;
+using Microsoft.Win32;
 using ParserLib;
 using ParserLib.Interfaces;
 using ParserLib.Models;
@@ -21,7 +22,7 @@ using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
 using static ParserLib.Entities.Helpers.TechnoHelper;
 
-namespace CanvasTest
+namespace Canvas3DViewer
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -30,11 +31,11 @@ namespace CanvasTest
     {
         public int dbgCnt = 0;
         List<IEntity> moves;
+        public string Filename { get; set; }
 
         public Point previousCoordinate;
-
         public Point3D centerRotation = new Point3D(150, 150, 0);
-        From3Dto2DPointConversion from3Dto2DPointConversion = new From3Dto2DPointConversion();
+        From3DTo2DPointConversion from3Dto2DPointConversion = null;
         private Brush _originalColor = null;
         private ObservableCollection<System.IO.FileInfo> isoFiles;
 
@@ -45,73 +46,207 @@ namespace CanvasTest
         {
             InitializeComponent();
             this.DataContext = this;
+            from3Dto2DPointConversion = new From3DTo2DPointConversion();
         }
 
-        private void MouseClickEntity(object sender, MouseButtonEventArgs e)
+
+        private async void DrawProgram(string fullName)
         {
-            var p = ((Path)sender);
-
-            if (p.Tag != null && p.Tag is IEntity)
+            try
             {
-                var entity = (p.Tag as IEntity);
 
 
-                txtLine.Text = entity.OriginalLine.ToString();
-                txtLineNumber.Text = $"Source line: {entity.SourceLine.ToString()}";
+                Parser parser = new Parser(new ParseIso(fullName));
+                moves = (List<IEntity>)await parser.GetMoves();
 
-                txtSP.Text = CreateStringPoint(entity.StartPoint, "Start p:");
+                //var dd = (List<IEntity>)await parser.GetMoves();
+                //dd.Wait();
 
-                if (entity is ArcMove)
+                if (moves == null) return;
+
+
+                var xMin = double.PositiveInfinity;
+                var xMax = double.NegativeInfinity;
+                var yMin = double.PositiveInfinity;
+                var yMax = double.NegativeInfinity;
+                var zMin = double.PositiveInfinity;
+                var zMax = double.NegativeInfinity;
+
+                foreach (IEntity item in moves)
                 {
-                    txtVP.Text = CreateStringPoint((entity as ArcMove).ViaPoint, "Via p:");
+                    if (item.IsBeamOn == false) continue;
+
+
+
+                    xMin = Math.Min(item.StartPoint.X, xMin);
+                    xMin = Math.Min(item.EndPoint.X, xMin);
+                    if (item is IArc) xMin = Math.Min((item as IArc).ViaPoint.X, xMin);
+
+                    xMax = Math.Max(item.StartPoint.X, xMax);
+                    xMax = Math.Max(item.EndPoint.X, xMax);
+                    if (item is IArc) xMax = Math.Max((item as IArc).ViaPoint.X, xMax);
+
+                    yMin = Math.Min(item.StartPoint.Y, yMin);
+                    yMin = Math.Min(item.EndPoint.Y, yMin);
+                    if (item is IArc) yMin = Math.Min((item as IArc).ViaPoint.Y, yMin);
+
+                    yMax = Math.Max(item.StartPoint.Y, yMax);
+                    yMax = Math.Max(item.EndPoint.Y, yMax);
+                    if (item is IArc) yMax = Math.Max((item as IArc).ViaPoint.Y, yMax);
+
+                    zMin = Math.Min(item.StartPoint.Z, zMin);
+                    zMin = Math.Min(item.EndPoint.Z, zMin);
+                    if (item is IArc) zMin = Math.Min((item as IArc).ViaPoint.Z, zMin);
+
+                    zMax = Math.Max(item.StartPoint.Z, zMax);
+                    zMax = Math.Max(item.EndPoint.Z, zMax);
+                    if (item is IArc) zMax = Math.Max((item as IArc).ViaPoint.Z, zMax);
+
+
                 }
-                else
+
+                centerRotation = new Point3D((yMin + yMax) / 2, (xMin + xMax) / 2, (zMin + zMax) / 2);
+                //int i = 0;
+                foreach (var item in moves)
                 {
-                    txtVP.Visibility = Visibility.Collapsed;
+                    //i++;
+                    if (item.EntityType == EEntityType.Line && item.IsBeamOn)
+                    {
+                        DrawLine(item as LinearMove);
+                    }
+                    else if (item.EntityType == EEntityType.Line && item.IsBeamOn == false && moves.Count < 2000)
+                    {
+                        DrawLine(item as LinearMove, true);
+                    }
+                    else if (item.EntityType == EEntityType.Arc && item.IsBeamOn)
+                    {
+                        DrawArc(item as ArcMove);
+                    }
+
+                    //Console.WriteLine($"SP: {item.StartPoint} EP: {item.EndPoint}");
+
+                    //if (i == 3) break;
                 }
-                txtEP.Text = CreateStringPoint(entity.EndPoint, "End p:");
 
 
+                InitialTransform();
 
+            }
+            catch (Exception ex)
+            {
+
+                Console.WriteLine(ex.Message);
             }
         }
 
-        private string CreateStringPoint(Point3D p, string s)
+        private void DrawArc(ArcMove arcMove)
         {
-            return $"{s} X:{Math.Round(p.X, 3)} Y:{Math.Round(p.Y, 3)} Z:{Math.Round(p.Z, 3)}";
+            PathFigure pf = new PathFigure();
+            ArcSegment ls = new ArcSegment();
+
+            BindingBase sourceBinding = new Binding { Source = arcMove, Path = new PropertyPath("StartPoint"), Converter = from3Dto2DPointConversion };
+            BindingOperations.SetBinding(pf, PathFigure.StartPointProperty, sourceBinding);
+
+
+            pf.Segments.Add(ls);
+
+            BindingBase destinationBindingPoint = new Binding { Source = arcMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion };
+            BindingBase destinationBindingSize = new Binding { Source = arcMove, Path = new PropertyPath("ArcSize") };
+            BindingBase destinationBindingRotationAngle = new Binding { Source = arcMove, Path = new PropertyPath("RotationAngle") };
+            BindingBase destinationBindingIsLargeArc = new Binding { Source = arcMove, Path = new PropertyPath("IsLargeArc") };
+            BindingBase destinationBindingIsStroked = new Binding { Source = arcMove, Path = new PropertyPath("IsStroked") };
+            BindingBase destinationBindingSweepDirection = new Binding { Source = arcMove, Path = new PropertyPath("ArcSweepDirection") };
+
+            BindingOperations.SetBinding(ls, ArcSegment.PointProperty, destinationBindingPoint);
+            BindingOperations.SetBinding(ls, ArcSegment.SizeProperty, destinationBindingSize);
+            BindingOperations.SetBinding(ls, ArcSegment.RotationAngleProperty, destinationBindingRotationAngle);
+            BindingOperations.SetBinding(ls, ArcSegment.IsLargeArcProperty, destinationBindingIsLargeArc);
+            BindingOperations.SetBinding(ls, ArcSegment.IsStrokedProperty, destinationBindingIsStroked);
+            BindingOperations.SetBinding(ls, ArcSegment.SweepDirectionProperty, destinationBindingSweepDirection);
+
+            PathGeometry geometry = new PathGeometry();
+            geometry.Figures.Add(pf);
+
+            Path p = new Path();
+            p.StrokeThickness = 1;
+            p.Tag = arcMove;
+            p.Stroke = GetLineColor(arcMove.LineColor);
+            arcMove.GeometryPath = geometry;
+
+            p.Data = geometry;
+            p.MouseDown += MouseClickEntity;
+
+            p.MouseEnter += MouseEnterEntity;
+            p.MouseLeave += MouseLeaveEntity;
+
+            canvas1.Children.Add(p);
+
+
         }
 
-
-        private void MouseEnterEntity(object sender, MouseEventArgs e)
+        private void DrawLine(LinearMove linearMove, bool isRapid = false)
         {
-            _originalColor = ((Path)sender).Stroke;
-            ((Path)sender).Stroke = Brushes.Orange;
-            ((Path)sender).StrokeThickness = 5;
-        }
+            PathFigure pf = new PathFigure();
+            LineSegment ls = new LineSegment();
 
-        private void MouseLeaveEntity(object sender, MouseEventArgs e)
-        {
-            ((Path)sender).Stroke = _originalColor;
-            ((Path)sender).StrokeThickness = 1;
-        }
+            BindingBase sourceBinding = new Binding { Source = linearMove, Path = new PropertyPath("StartPoint"), Converter = from3Dto2DPointConversion };
+            BindingOperations.SetBinding(pf, PathFigure.StartPointProperty, sourceBinding);
 
-        protected void OnNotifyPropertyChanged([CallerMemberName] string propertyName = "")
-        {
-            if (PropertyChanged != null) PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+            pf.Segments.Add(ls);
 
+            BindingBase destinationBinding = new Binding { Source = linearMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion };
+            BindingOperations.SetBinding(ls, LineSegment.PointProperty, destinationBinding);
+
+            PathGeometry geometry = new PathGeometry();
+
+            geometry.Figures.Add(pf);
+
+
+            Path p = new Path();
+            p.StrokeThickness = 1;
+
+            if (isRapid) p.StrokeDashArray = new DoubleCollection() { 4, 2 };
+            p.Tag = linearMove;
+            linearMove.GeometryPath = geometry;
+            p.Data = geometry;
+
+            if (isRapid == false)
+            {
+                p.StrokeThickness = 1;
+
+                p.Stroke = GetLineColor(linearMove.LineColor);
+
+
+                p.MouseDown += MouseClickEntity;
+                p.MouseEnter += MouseEnterEntity;
+                p.MouseLeave += MouseLeaveEntity;
+            }
+            else
+            {
+                p.Stroke = Brushes.DarkGray;
+                p.Opacity = 0.2;
+            }
+            canvas1.Children.Add(p);
+        }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            System.IO.DirectoryInfo dt = new System.IO.DirectoryInfo(@"c:\ncprog\PROGRAMMI iso-siemens\");
-            var oc = new ObservableCollection<System.IO.FileInfo>(dt.GetFiles(@"*.iso", System.IO.SearchOption.AllDirectories));
-            oc.OrderBy(f => f.Name);
-            IsoFiles = new ObservableCollection<System.IO.FileInfo>(oc);
+
+            LoadProgramsList();
+
         }
 
-
-
-
+        private void LoadProgramsList()
+        {
+            if (System.IO.Directory.Exists(Properties.Settings.Default.IsoProgramsPath))
+            {
+                System.IO.DirectoryInfo dt = new System.IO.DirectoryInfo(Properties.Settings.Default.IsoProgramsPath);
+                
+                List<System.IO.FileInfo> lst=new List<System.IO.FileInfo>(dt.GetFiles(@"*.iso", System.IO.SearchOption.AllDirectories));
+                IsoFiles = new ObservableCollection<System.IO.FileInfo>(lst.OrderBy(n => n.Name));
+                txtIsoPrograms.Text = Properties.Settings.Default.IsoProgramsPath;
+            }
+        }
 
         private SolidColorBrush GetLineColor(ELineType lineColor)
         {
@@ -136,6 +271,59 @@ namespace CanvasTest
                     return Brushes.White;
             }
 
+        }
+
+        private void MouseClickEntity(object sender, MouseButtonEventArgs e)
+        {
+            var p = ((Path)sender);
+
+            if (p.Tag != null && p.Tag is IEntity)
+            {
+                var entity = (p.Tag as IEntity);
+
+
+                txtLine.Text = entity.OriginalLine.ToString();
+                txtLineNumber.Text = $"Source line: {entity.SourceLine.ToString()}";
+
+                txtSP.Text = CreateStringPoint(entity.StartPoint, "Start p:");
+
+                if (entity is ArcMove)
+                {
+                    txtVP.Visibility = Visibility.Visible;
+                    txtVP.Text = CreateStringPoint((entity as ArcMove).ViaPoint, "Via p:");
+                }
+                else
+                {
+                    txtVP.Visibility = Visibility.Collapsed;
+                }
+                txtEP.Text = CreateStringPoint(entity.EndPoint, "End p:");
+
+
+
+            }
+        }
+
+        private string CreateStringPoint(Point3D p, string s)
+        {
+            return $"{s} X:{Math.Round(p.X, 3)} Y:{Math.Round(p.Y, 3)} Z:{Math.Round(p.Z, 3)}";
+        }
+
+        private void MouseEnterEntity(object sender, MouseEventArgs e)
+        {
+            _originalColor = ((Path)sender).Stroke;
+            ((Path)sender).Stroke = Brushes.Orange;
+            ((Path)sender).StrokeThickness = 5;
+        }
+
+        private void MouseLeaveEntity(object sender, MouseEventArgs e)
+        {
+            ((Path)sender).Stroke = _originalColor;
+            ((Path)sender).StrokeThickness = 1;
+        }
+
+        protected void OnNotifyPropertyChanged([CallerMemberName] string propertyName = "")
+        {
+            if (PropertyChanged != null) PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         private void canvas1_MouseDown(object sender, MouseButtonEventArgs e)
@@ -262,9 +450,9 @@ namespace CanvasTest
             foreach (var item in moves)
             {
                 if (!item.IsBeamOn) { continue; }
-                if ((item is ArcMove)==false && item.Is2DProgram==false) 
-                { 
-                    continue; 
+                if ((item is ArcMove) == false && item.Is2DProgram == false)
+                {
+                    continue;
                 }
 
 
@@ -340,7 +528,6 @@ namespace CanvasTest
 
         }
 
-
         private void canvas1_MouseWheel(object sender, MouseWheelEventArgs e)
         {
 
@@ -380,223 +567,12 @@ namespace CanvasTest
             }
         }
 
-        public string Filename { get; set; }
-
         private void ListView_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             canvas1.Children.Clear();
             var fi = e.AddedItems[0] as System.IO.FileInfo;
             Filename = fi.FullName;
             DrawProgram(fi.FullName);
-        }
-
-        private void DrawProgram(string fullName)
-        {
-            try
-            {
-
-
-                Parser parser = new Parser(new ParseIso(fullName));
-                moves = (List<IEntity>)parser.GetMoves();
-
-
-
-
-
-
-                var xMin = double.PositiveInfinity;
-                var xMax = double.NegativeInfinity;
-                var yMin = double.PositiveInfinity;
-                var yMax = double.NegativeInfinity;
-                var zMin = double.PositiveInfinity;
-                var zMax = double.NegativeInfinity;
-
-                foreach (IEntity item in moves)
-                {
-                    if (item.IsBeamOn == false) continue;
-
-
-
-                    xMin = Math.Min(item.StartPoint.X, xMin);
-                    xMin = Math.Min(item.EndPoint.X, xMin);
-                    if (item is IArc) xMin = Math.Min((item as IArc).ViaPoint.X, xMin);
-
-                    xMax = Math.Max(item.StartPoint.X, xMax);
-                    xMax = Math.Max(item.EndPoint.X, xMax);
-                    if (item is IArc) xMax = Math.Max((item as IArc).ViaPoint.X, xMax);
-
-                    yMin = Math.Min(item.StartPoint.Y, yMin);
-                    yMin = Math.Min(item.EndPoint.Y, yMin);
-                    if (item is IArc) yMin = Math.Min((item as IArc).ViaPoint.Y, yMin);
-
-                    yMax = Math.Max(item.StartPoint.Y, yMax);
-                    yMax = Math.Max(item.EndPoint.Y, yMax);
-                    if (item is IArc) yMax = Math.Max((item as IArc).ViaPoint.Y, yMax);
-
-                    zMin = Math.Min(item.StartPoint.Z, zMin);
-                    zMin = Math.Min(item.EndPoint.Z, zMin);
-                    if (item is IArc) zMin = Math.Min((item as IArc).ViaPoint.Z, zMin);
-
-                    zMax = Math.Max(item.StartPoint.Z, zMax);
-                    zMax = Math.Max(item.EndPoint.Z, zMax);
-                    if (item is IArc) zMax = Math.Max((item as IArc).ViaPoint.Z, zMax);
-
-
-
-                    //xMax = Math.Max(item.Bounds.Bounds.Right, xMax);
-                    //    yMin = Math.Min(item.Bounds.Bounds.Bottom, yMin);
-                    //    yMax = Math.Max(item.Bounds.Bounds.Top, yMax);
-
-
-                    //if (item.StartPoint.X < xMin) xMin = item.StartPoint.X;
-                    //if (item.EndPoint.X < xMin) xMin = item.EndPoint.X;
-                    //if (item is IArc)if ((item as IArc).ViaPoint.X < xMin) xMin = (item as IArc).ViaPoint.X;
-
-                    //if (item.StartPoint.X > xMax) xMax = item.StartPoint.X;
-                    //if (item.EndPoint.X > xMax) xMax = item.EndPoint.X;
-                    //if (item is IArc)if ((item as IArc).ViaPoint.X > xMax) xMax = (item as IArc).ViaPoint.X;
-
-                    //if (item.StartPoint.Y < yMin) yMin = item.StartPoint.Y;
-                    //if (item.EndPoint.Y < yMin) yMin = item.EndPoint.Y;
-                    //if (item is IArc)if ((item as IArc).ViaPoint.Y < yMin) yMin = (item as IArc).ViaPoint.Y;
-
-                    //if (item.StartPoint.Y > yMax)yMax = item.StartPoint.Y;
-                    //if (item.EndPoint.Y > yMax)yMax = item.EndPoint.Y;
-                    //if (item is IArc)if ((item as IArc).ViaPoint.Y > yMax) yMax = (item as IArc).ViaPoint.Y;
-
-
-                    //if (item.StartPoint.Z < zMin) zMin = item.StartPoint.Z;
-                    //if (item.EndPoint.Z < zMin) zMin = item.EndPoint.Z;
-                    //if (item is IArc)if ((item as IArc).ViaPoint.Z < zMin) xMin = (item as IArc).ViaPoint.Z;
-
-                    //if (item.StartPoint.Z > zMax) zMax = item.StartPoint.Z;
-                    //if (item.EndPoint.Z > zMax) zMax = item.EndPoint.Z;
-                    //if (item is IArc)if ((item as IArc).ViaPoint.Z > zMax) zMax = (item as IArc).ViaPoint.Z;
-
-                }
-
-                centerRotation = new Point3D((yMin + yMax) / 2, (xMin + xMax) / 2, (zMin + zMax) / 2);
-                int i = 0;
-                foreach (var item in moves)
-                {
-                    i++;
-                    if (item.EntityType == EEntityType.Line && item.IsBeamOn)
-                    {
-                        DrawLine(item as LinearMove);
-                    }
-                    else if (item.EntityType == EEntityType.Line && item.IsBeamOn == false && moves.Count < 2000)
-                    {
-                        DrawLine(item as LinearMove, true);
-                    }
-                    else if (item.EntityType == EEntityType.Arc && item.IsBeamOn)
-                    {
-                        DrawArc(item as ArcMove);
-                    }
-
-                    Console.WriteLine($"SP: {item.StartPoint} EP: {item.EndPoint}");
-
-                    //if (i == 3) break;
-                }
-
-
-                InitialTransform();
-
-            }
-            catch (Exception ex)
-            {
-
-                Console.WriteLine(ex.Message);
-            }
-        }
-
-        private void DrawArc(ArcMove arcMove)
-        {
-            PathFigure pf = new PathFigure();
-            ArcSegment ls = new ArcSegment();
-
-            BindingBase sourceBinding = new Binding { Source = arcMove, Path = new PropertyPath("StartPoint"), Converter = from3Dto2DPointConversion };
-            BindingOperations.SetBinding(pf, PathFigure.StartPointProperty, sourceBinding);
-
-
-            pf.Segments.Add(ls);
-
-            BindingBase destinationBindingPoint = new Binding { Source = arcMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion };
-            BindingBase destinationBindingSize = new Binding { Source = arcMove, Path = new PropertyPath("ArcSize") };
-            BindingBase destinationBindingRotationAngle = new Binding { Source = arcMove, Path = new PropertyPath("RotationAngle") };
-            BindingBase destinationBindingIsLargeArc = new Binding { Source = arcMove, Path = new PropertyPath("IsLargeArc") };
-            BindingBase destinationBindingIsStroked = new Binding { Source = arcMove, Path = new PropertyPath("IsStroked") };
-            BindingBase destinationBindingSweepDirection = new Binding { Source = arcMove, Path = new PropertyPath("ArcSweepDirection") };
-
-            BindingOperations.SetBinding(ls, ArcSegment.PointProperty, destinationBindingPoint);
-            BindingOperations.SetBinding(ls, ArcSegment.SizeProperty, destinationBindingSize);
-            BindingOperations.SetBinding(ls, ArcSegment.RotationAngleProperty, destinationBindingRotationAngle);
-            BindingOperations.SetBinding(ls, ArcSegment.IsLargeArcProperty, destinationBindingIsLargeArc);
-            BindingOperations.SetBinding(ls, ArcSegment.IsStrokedProperty, destinationBindingIsStroked);
-            BindingOperations.SetBinding(ls, ArcSegment.SweepDirectionProperty, destinationBindingSweepDirection);
-
-            PathGeometry geometry = new PathGeometry();
-            geometry.Figures.Add(pf);
-
-            Path p = new Path();
-            p.StrokeThickness = 1;
-            p.Tag = arcMove;
-            p.Stroke = GetLineColor(arcMove.LineColor);
-            arcMove.GeometryPath = geometry;
-
-            p.Data = geometry;
-            p.MouseDown += MouseClickEntity;
-
-            p.MouseEnter += MouseEnterEntity;
-            p.MouseLeave += MouseLeaveEntity;
-
-            canvas1.Children.Add(p);
-
-
-        }
-
-        private void DrawLine(LinearMove linearMove, bool isRapid = false)
-        {
-            PathFigure pf = new PathFigure();
-            LineSegment ls = new LineSegment();
-
-            BindingBase sourceBinding = new Binding { Source = linearMove, Path = new PropertyPath("StartPoint"), Converter = from3Dto2DPointConversion };
-            BindingOperations.SetBinding(pf, PathFigure.StartPointProperty, sourceBinding);
-
-            pf.Segments.Add(ls);
-
-            BindingBase destinationBinding = new Binding { Source = linearMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion };
-            BindingOperations.SetBinding(ls, LineSegment.PointProperty, destinationBinding);
-
-            PathGeometry geometry = new PathGeometry();
-
-            geometry.Figures.Add(pf);
-
-
-            Path p = new Path();
-            p.StrokeThickness = 1;
-
-            if (isRapid) p.StrokeDashArray = new DoubleCollection() { 4, 2 };
-            p.Tag = linearMove;
-            linearMove.GeometryPath = geometry;
-            p.Data = geometry;
-
-            if (isRapid == false)
-            {
-                p.StrokeThickness = 1;
-
-                p.Stroke = GetLineColor(linearMove.LineColor);
-
-
-                p.MouseDown += MouseClickEntity;
-                p.MouseEnter += MouseEnterEntity;
-                p.MouseLeave += MouseLeaveEntity;
-            }
-            else
-            {
-                p.Stroke = Brushes.DarkGray;
-                p.Opacity = 0.2;
-            }
-            canvas1.Children.Add(p);
         }
 
         private void txtLine_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -609,7 +585,7 @@ namespace CanvasTest
                     var nppExePath = System.IO.Path.Combine(nppDir, "Notepad++.exe");
 
                     var nppReadmePath = System.IO.Path.Combine(nppDir, Filename);
-                    var line = int.Parse(txtLineNumber.Text.Replace("Source line: ",""));
+                    var line = int.Parse(txtLineNumber.Text.Replace("Source line: ", ""));
                     var sb = new StringBuilder();
                     sb.AppendFormat("\"{0}\" -n{1}", nppReadmePath, line);
                     Process.Start(nppExePath, sb.ToString());
@@ -618,19 +594,19 @@ namespace CanvasTest
             }
         }
 
-    }
-
-    public class From3Dto2DPointConversion : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        private void txtIsoPrograms_TextInput(object sender, TextCompositionEventArgs e)
         {
-            Point3D p3D = (Point3D)value;
-            return new Point(p3D.X, p3D.Y);
+
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        private void txtIsoPrograms_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
-            throw new NotImplementedException();
+            if (System.IO.Directory.Exists(txtIsoPrograms.Text))
+            {
+                Properties.Settings.Default.IsoProgramsPath = txtIsoPrograms.Text;
+                Properties.Settings.Default.Save();
+                LoadProgramsList();
+            }
         }
     }
 }

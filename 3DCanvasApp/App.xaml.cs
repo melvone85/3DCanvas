@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace CanvasTest
+namespace Canvas3DViewer
 {
     /// <summary>
     /// Interaction logic for App.xaml
