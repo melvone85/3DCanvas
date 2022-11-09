@@ -399,7 +399,6 @@ namespace ParserLib.Services.Parsers
                     case 92:
                     case 93:
                     case 113:
-                    case 114:
 
                         var refMove = programContext.ReferenceMove != null ? programContext.ReferenceMove : new LinearMove();
 

@@ -15,7 +15,6 @@ namespace ParserLib.Models
         private Vector3D vpn = new Vector3D(0, 0, 1);
 
         public bool Is2DProgram { get; set; }
-        public Point3D StartPoint { get; set; }
         public Point3D EndPoint { get; set; }
         public Point3D ViaPoint { get; set; }
         public Size ArcSize { get; set; }
@@ -39,6 +38,7 @@ namespace ParserLib.Models
         public PathGeometry GeometryPath { get; set; }
         public Point3D NormalPoint { get; set; }
         public Point3D CenterPoint { get; set; }
+        public Point3D StartPoint { get; set; }
 
         private double strokeThickness = 1;
 
