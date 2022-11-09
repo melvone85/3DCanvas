@@ -44,8 +44,12 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Entities\Helpers\GeoHelper.cs" />
+    <Compile Include="Entities\Helpers\TechnoHelper.cs" />
+    <Compile Include="Interfaces\IProgramContext.cs" />
+    <Compile Include="Models\ProgramContext.cs" />
+    <Compile Include="Models\ViewModelBase.cs" />
     <Compile Include="Parser.cs" />
-    <Compile Include="Globals\Globals.cs" />
     <Compile Include="Interfaces\IArc.cs" />
     <Compile Include="Interfaces\ICircle.cs" />
     <Compile Include="Interfaces\IEntity.cs" />

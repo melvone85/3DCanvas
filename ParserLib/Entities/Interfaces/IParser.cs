@@ -7,8 +7,6 @@ namespace ParserLib.Services.Parsers.Interfaces
     {
         string Filename { get; set; }
         List<IEntity> GetMoves();        
-        List<IEntity> ParseMacro(string line);
-        IEntity ParseLine(string line);
 
     }
 }

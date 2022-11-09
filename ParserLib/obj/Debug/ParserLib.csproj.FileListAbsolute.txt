@@ -1,0 +1,6 @@
+D:\VSProjects\GitPersonal\3DCanvas\ParserLib\bin\Debug\ParserLib.dll
+D:\VSProjects\GitPersonal\3DCanvas\ParserLib\bin\Debug\ParserLib.pdb
+D:\VSProjects\GitPersonal\3DCanvas\ParserLib\obj\Debug\ParserLib.csproj.AssemblyReference.cache
+D:\VSProjects\GitPersonal\3DCanvas\ParserLib\obj\Debug\ParserLib.csproj.CoreCompileInputs.cache
+D:\VSProjects\GitPersonal\3DCanvas\ParserLib\obj\Debug\ParserLib.dll
+D:\VSProjects\GitPersonal\3DCanvas\ParserLib\obj\Debug\ParserLib.pdb
