@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows.Media.Media3D;
-using static ParserLib.Entities.Helpers.TechnoHelper;
+using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Interfaces
 {
@@ -12,6 +9,7 @@ namespace ParserLib.Interfaces
     {
         IEntity ReferenceMove { get; set; }
         IEntity LastEntity { get; set; }
+        Point3D CenterRotationPoint { get; set; }
         bool Is3DProgram { get; set; }
         bool Is2DProgram { get; set; }
         bool IsTubeProgram { get; set; }
@@ -23,5 +21,10 @@ namespace ParserLib.Interfaces
         bool IsMarkingProgram { get; set; }
         int SourceLine { get; set; }
         ELineType ContourLineType { get; set; }
+
+        IList<IBaseEntity> Moves { get; set; }
+
+
+        void UpdateProgramCenterPoint();
     }
 }

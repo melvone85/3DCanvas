@@ -1,4 +1,4 @@
-﻿namespace ParserLib.Entities.Helpers
+﻿namespace ParserLib.Helpers
 {
     public static class TechnoHelper
     {
@@ -19,7 +19,10 @@
             Line = 1,
             Arc,
             Circle,
-            Rapid
+            Slot,
+            Rapid,
+            Poly,
+            Rect
         }
     }
 }

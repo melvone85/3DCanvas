@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Canvas3DViewer"
         mc:Ignorable="d"
-        Title="Window1" Height="450" Width="800" Loaded="Window_Loaded" FontFamily="Comfortaa">
+        Title="Window1" Height="450" Width="800" Loaded="Window_Loaded" FontFamily="Segoe UI">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition/>
@@ -18,23 +18,23 @@
         <Grid Grid.Column="0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="30"/>
-
-                <RowDefinition Height="150*"/>
-                <RowDefinition Height="30*"/>
+                <RowDefinition Height="35"/>
+                <RowDefinition Height="35"/>
+                <RowDefinition Height="302*"/>
+                <RowDefinition Height="67*"/>
             </Grid.RowDefinitions>
 
-            <TextBox Grid.Row="0" VerticalContentAlignment="Center" Text="" x:Name="txtIsoPrograms" Background="AliceBlue" TextInput="txtIsoPrograms_TextInput" TextChanged="txtIsoPrograms_TextChanged" />
-            <ListView Grid.Row="1" ItemsSource="{Binding IsoFiles}" SelectionChanged="ListView_SelectionChanged">
+            <TextBox Grid.Row="1" Margin="2" VerticalContentAlignment="Center" Text="" x:Name="txtIsoPrograms" Background="White" TextInput="txtIsoPrograms_TextInput" TextChanged="txtIsoPrograms_TextChanged" />
+            <ComboBox Grid.Row="2" Margin="5" ItemsSource="{Binding ExtFiles}" SelectedItem="{Binding SelectedExtensionFile}" />
+            <ListView Grid.Row="3" SelectionChanged="ListView_SelectionChanged" ItemsSource="{Binding CncFiles}" />
+            <StackPanel Grid.Row="4" VerticalAlignment="Top" Margin="10,10,10,0" Height="143">
+                <TextBlock Text="" x:Name="lbl" TextWrapping="Wrap" Margin="5,5" HorizontalAlignment="Left" Width="150" />
+                <TextBlock Text="" x:Name="txtLine" Margin="5,5" HorizontalAlignment="Left" MouseLeftButtonDown="txtLine_MouseLeftButtonDown"/>
+                <TextBlock Text="" x:Name="txtLineNumber" TextWrapping="Wrap"  Margin="5,5" HorizontalAlignment="Left"/>
 
-            </ListView>
-            <StackPanel Grid.Row="2" VerticalAlignment="Top" Margin="10">
-                <TextBlock Text="" x:Name="lbl" TextWrapping="Wrap" Margin="5,0" HorizontalAlignment="Left" Width="150" />
-                <TextBlock Text="" x:Name="txtLine" Margin="5,0" HorizontalAlignment="Left" Width="150" MouseLeftButtonDown="txtLine_MouseLeftButtonDown"/>
-                <TextBlock Text="" x:Name="txtLineNumber" TextWrapping="Wrap"  Margin="5,0" HorizontalAlignment="Left" Width="150"/>
-
-                <TextBlock Text="" x:Name="txtSP" HorizontalAlignment="Left"  Margin="5,0"/>
-                <TextBlock Text="" x:Name="txtVP" HorizontalAlignment="Left"  Margin="5,0"/>
-                <TextBlock Text="" x:Name="txtEP" HorizontalAlignment="Left"  Margin="5,0"/>
+                <TextBlock Text="" x:Name="txtSP" HorizontalAlignment="Left"  Margin="5,5"/>
+                <TextBlock Text="" x:Name="txtVP" HorizontalAlignment="Left"  Margin="5,5"/>
+                <TextBlock Text="" x:Name="txtEP" HorizontalAlignment="Left"  Margin="5,5"/>
 
             </StackPanel>
         </Grid>

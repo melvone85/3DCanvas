@@ -20,7 +20,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
-using static ParserLib.Entities.Helpers.TechnoHelper;
+
+using static ParserLib.Helpers.TechnoHelper;
 
 namespace Canvas3DViewer
 {
@@ -30,102 +31,92 @@ namespace Canvas3DViewer
     public partial class Window1 : Window, INotifyPropertyChanged
     {
         public int dbgCnt = 0;
-        List<IEntity> moves;
+        List<IBaseEntity> moves;
         public string Filename { get; set; }
 
         public Point previousCoordinate;
         public Point3D centerRotation = new Point3D(150, 150, 0);
         From3DTo2DPointConversion from3Dto2DPointConversion = null;
         private Brush _originalColor = null;
-        private ObservableCollection<System.IO.FileInfo> isoFiles;
+        private ObservableCollection<System.IO.FileInfo> _cncFiles;
 
         public event PropertyChangedEventHandler PropertyChanged;
-        public ObservableCollection<System.IO.FileInfo> IsoFiles { get => isoFiles; set { isoFiles = value; OnNotifyPropertyChanged(); } }
+        public ObservableCollection<System.IO.FileInfo> CncFiles { get => _cncFiles; set { _cncFiles = value; OnPropertyChanged(); } }
+        private ObservableCollection<string> _extFiles;
+        public ObservableCollection<string> ExtFiles { get => _extFiles; set { _extFiles = value; OnPropertyChanged(); } }
+
 
         public Window1()
         {
             InitializeComponent();
+            System.Threading.Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("en-EN");
             this.DataContext = this;
             from3Dto2DPointConversion = new From3DTo2DPointConversion();
         }
-
 
         private async void DrawProgram(string fullName)
         {
             try
             {
 
+                Parser parser = null;
 
-                Parser parser = new Parser(new ParseIso(fullName));
-                moves = (List<IEntity>)await parser.GetMoves();
+                if (SelectedExtensionFile == "*.iso")
+                    parser = new Parser(new ParseIso(fullName));
+                else if (SelectedExtensionFile == "*.mpf")
+                    parser = new Parser(new ParseMpf(fullName));
 
-                //var dd = (List<IEntity>)await parser.GetMoves();
-                //dd.Wait();
+
+                var programContext = (IProgramContext)await parser.GetProgramContext();
+                moves = (List<IBaseEntity>)programContext.Moves;
 
                 if (moves == null) return;
 
+                centerRotation = programContext.CenterRotationPoint;
 
-                var xMin = double.PositiveInfinity;
-                var xMax = double.NegativeInfinity;
-                var yMin = double.PositiveInfinity;
-                var yMax = double.NegativeInfinity;
-                var zMin = double.PositiveInfinity;
-                var zMax = double.NegativeInfinity;
-
-                foreach (IEntity item in moves)
-                {
-                    if (item.IsBeamOn == false) continue;
-
-
-
-                    xMin = Math.Min(item.StartPoint.X, xMin);
-                    xMin = Math.Min(item.EndPoint.X, xMin);
-                    if (item is IArc) xMin = Math.Min((item as IArc).ViaPoint.X, xMin);
-
-                    xMax = Math.Max(item.StartPoint.X, xMax);
-                    xMax = Math.Max(item.EndPoint.X, xMax);
-                    if (item is IArc) xMax = Math.Max((item as IArc).ViaPoint.X, xMax);
-
-                    yMin = Math.Min(item.StartPoint.Y, yMin);
-                    yMin = Math.Min(item.EndPoint.Y, yMin);
-                    if (item is IArc) yMin = Math.Min((item as IArc).ViaPoint.Y, yMin);
-
-                    yMax = Math.Max(item.StartPoint.Y, yMax);
-                    yMax = Math.Max(item.EndPoint.Y, yMax);
-                    if (item is IArc) yMax = Math.Max((item as IArc).ViaPoint.Y, yMax);
-
-                    zMin = Math.Min(item.StartPoint.Z, zMin);
-                    zMin = Math.Min(item.EndPoint.Z, zMin);
-                    if (item is IArc) zMin = Math.Min((item as IArc).ViaPoint.Z, zMin);
-
-                    zMax = Math.Max(item.StartPoint.Z, zMax);
-                    zMax = Math.Max(item.EndPoint.Z, zMax);
-                    if (item is IArc) zMax = Math.Max((item as IArc).ViaPoint.Z, zMax);
-
-
-                }
-
-                centerRotation = new Point3D((yMin + yMax) / 2, (xMin + xMax) / 2, (zMin + zMax) / 2);
                 //int i = 0;
                 foreach (var item in moves)
                 {
                     //i++;
-                    if (item.EntityType == EEntityType.Line && item.IsBeamOn)
+                    if (item.IsBeamOn == false)
                     {
-                        DrawLine(item as LinearMove);
-                    }
-                    else if (item.EntityType == EEntityType.Line && item.IsBeamOn == false && moves.Count < 2000)
-                    {
-                        DrawLine(item as LinearMove, true);
-                    }
-                    else if (item.EntityType == EEntityType.Arc && item.IsBeamOn)
-                    {
-                        DrawArc(item as ArcMove);
-                    }
+                        if (item.EntityType == EEntityType.Line && moves.Count < 2000)
+                        {
+                            DrawLine(item as LinearMove, true);
+                        }
 
-                    //Console.WriteLine($"SP: {item.StartPoint} EP: {item.EndPoint}");
+                    }
+                    else
+                    {
+                        if (item.EntityType == EEntityType.Line)
+                        {
+                            DrawLine(item as LinearMove);
+                        }
+                        else if (item.EntityType == EEntityType.Arc)
+                        {
+                            DrawArc(item as ArcMove);
+                        }
+                        else if (item.EntityType == EEntityType.Slot)
+                        {
+                            var slot = item as SlotMove;
 
-                    //if (i == 3) break;
+                            DrawArc(slot.Arc1 as ArcMove);
+                            DrawLine(slot.Line1 as LinearMove);
+                            DrawArc(slot.Arc2 as ArcMove);
+                            DrawLine(slot.Line2 as LinearMove);
+
+                        }
+                        else if (item.EntityType == EEntityType.Poly)
+                        {
+                            var poly = item as PolyMoves;
+
+                            foreach (var l in poly.Lines)
+                            {
+                                DrawLine(l as LinearMove);
+                            }
+                        }
+
+                    }
                 }
 
 
@@ -231,20 +222,41 @@ namespace Canvas3DViewer
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-
+            ExtFiles = new ObservableCollection<string>();
+            ExtFiles.Add("*.mpf"); ExtFiles.Add("*.iso");
+            SelectedExtensionFile = Properties.Settings.Default.ExtensionFile;
             LoadProgramsList();
 
         }
 
+        private string _extFile;
+        public string SelectedExtensionFile
+        {
+            get
+            {
+                return _extFile;
+            }
+            set
+            {
+                Properties.Settings.Default.ExtensionFile = value;
+                Properties.Settings.Default.Save();
+
+                _extFile = value;
+
+                LoadProgramsList();
+                OnPropertyChanged("SelectedExtensionFile");
+            }
+        }
+
         private void LoadProgramsList()
         {
-            if (System.IO.Directory.Exists(Properties.Settings.Default.IsoProgramsPath))
+            if (System.IO.Directory.Exists(Properties.Settings.Default.CncProgramsPath))
             {
-                System.IO.DirectoryInfo dt = new System.IO.DirectoryInfo(Properties.Settings.Default.IsoProgramsPath);
-                
-                List<System.IO.FileInfo> lst=new List<System.IO.FileInfo>(dt.GetFiles(@"*.iso", System.IO.SearchOption.AllDirectories));
-                IsoFiles = new ObservableCollection<System.IO.FileInfo>(lst.OrderBy(n => n.Name));
-                txtIsoPrograms.Text = Properties.Settings.Default.IsoProgramsPath;
+                System.IO.DirectoryInfo dt = new System.IO.DirectoryInfo(Properties.Settings.Default.CncProgramsPath);
+
+                List<System.IO.FileInfo> lst = new List<System.IO.FileInfo>(dt.GetFiles(SelectedExtensionFile, System.IO.SearchOption.AllDirectories));
+                CncFiles = new ObservableCollection<System.IO.FileInfo>(lst.OrderBy(n => n.Name));
+                txtIsoPrograms.Text = Properties.Settings.Default.CncProgramsPath;
             }
         }
 
@@ -321,7 +333,7 @@ namespace Canvas3DViewer
             ((Path)sender).StrokeThickness = 1;
         }
 
-        protected void OnNotifyPropertyChanged([CallerMemberName] string propertyName = "")
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
             if (PropertyChanged != null) PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
@@ -360,7 +372,7 @@ namespace Canvas3DViewer
 
                     Quaternion Q = new Quaternion(vQ, qRotAngle);
 
-                    U.RotateAt(Q, new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z));
+                    U.RotateAt(Q, centerRotation);
                     Un.RotateAt(Q, new Point3D(0, 0, 0));
 
                     foreach (var item in moves)
@@ -426,18 +438,6 @@ namespace Canvas3DViewer
                 item.Render(U, Un, false, 1);
             }
 
-            //U.SetIdentity();
-            //Un.SetIdentity();
-
-            //U.RotateAt(new Quaternion(new Vector3D(1, 0, 1), -45), cor);
-            //Un.RotateAt(new Quaternion(new Vector3D(1, 0, 1), -45), new Point3D(0, 0, 0));
-
-            //foreach (var item in moves)
-            //{
-            //    item.Render(U, Un, false, 1);
-            //}
-
-            ////////////////////////////////////////////////////////////////////////////////////
             //// shift al centro del canvas
 
             double xMin = double.PositiveInfinity;
@@ -455,12 +455,10 @@ namespace Canvas3DViewer
                     continue;
                 }
 
-
-                xMin = Math.Min(item.GeometryPath.Bounds.Left, xMin);
-                xMax = Math.Max(item.GeometryPath.Bounds.Right, xMax);
-                yMin = Math.Min(item.GeometryPath.Bounds.Bottom, yMin);
-                yMax = Math.Max(item.GeometryPath.Bounds.Top, yMax);
-
+                xMin = Math.Min((item as IEntity).GeometryPath.Bounds.Left, xMin);
+                xMax = Math.Max((item as IEntity).GeometryPath.Bounds.Right, xMax);
+                yMin = Math.Min((item as IEntity).GeometryPath.Bounds.Bottom, yMin);
+                yMax = Math.Max((item as IEntity).GeometryPath.Bounds.Top, yMax);
             }
 
             double xMed = (xMax + xMin) / 2;
@@ -570,6 +568,7 @@ namespace Canvas3DViewer
         private void ListView_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             canvas1.Children.Clear();
+            if (e.AddedItems.Count == 0) return;
             var fi = e.AddedItems[0] as System.IO.FileInfo;
             Filename = fi.FullName;
             DrawProgram(fi.FullName);
@@ -603,7 +602,7 @@ namespace Canvas3DViewer
         {
             if (System.IO.Directory.Exists(txtIsoPrograms.Text))
             {
-                Properties.Settings.Default.IsoProgramsPath = txtIsoPrograms.Text;
+                Properties.Settings.Default.CncProgramsPath = txtIsoPrograms.Text;
                 Properties.Settings.Default.Save();
                 LoadProgramsList();
             }

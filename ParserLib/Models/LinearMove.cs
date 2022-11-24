@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
-using static ParserLib.Entities.Helpers.TechnoHelper;
+using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Models
 {

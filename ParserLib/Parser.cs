@@ -1,5 +1,4 @@
 ﻿using ParserLib.Interfaces;
-using ParserLib.Services.Parsers.Interfaces;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -13,9 +12,9 @@ namespace ParserLib
             _parser = parser;
         }
 
-        public async Task<IEnumerable<IEntity>> GetMoves() 
+        public async Task<IProgramContext> GetProgramContext() 
         { 
-            return await _parser.GetMoves();
+            return await _parser.GetProgramContext();
         }
     }
 }

@@ -26,12 +26,24 @@ namespace Canvas3DViewer.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string IsoProgramsPath {
+        public string CncProgramsPath {
             get {
-                return ((string)(this["IsoProgramsPath"]));
+                return ((string)(this["CncProgramsPath"]));
             }
             set {
-                this["IsoProgramsPath"] = value;
+                this["CncProgramsPath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("*.mpf")]
+        public string ExtensionFile {
+            get {
+                return ((string)(this["ExtensionFile"]));
+            }
+            set {
+                this["ExtensionFile"] = value;
             }
         }
     }

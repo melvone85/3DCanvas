@@ -2,8 +2,11 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="CanvasTest.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="IsoProgramsPath" Type="System.String" Scope="User">
+    <Setting Name="CncProgramsPath" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="ExtensionFile" Type="System.String" Scope="User">
+      <Value Profile="(Default)">*.mpf</Value>
     </Setting>
   </Settings>
 </SettingsFile>
