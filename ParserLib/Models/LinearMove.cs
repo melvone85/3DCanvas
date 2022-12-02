@@ -1,10 +1,5 @@
 ﻿using ParserLib.Interfaces;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
 using static ParserLib.Helpers.TechnoHelper;
@@ -28,7 +23,7 @@ namespace ParserLib.Models
         public Point3D EndPoint { get { return _endPoint; } set { _endPoint = value; } }
 
         public PathGeometry GeometryPath { get; set; }
-
+        public Tuple<double, double, double, double> BoundingBox => new Tuple<double, double, double, double>(GeometryPath.Bounds.Left, GeometryPath.Bounds.Right, GeometryPath.Bounds.Bottom, GeometryPath.Bounds.Top);
 
         public void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {
@@ -38,5 +33,9 @@ namespace ParserLib.Models
             OnPropertyChanged("EndPoint");
         }
 
+        public override string ToString()
+        {
+            return $"Line: {StartPoint} - {EndPoint}";
+        }
     }
 }

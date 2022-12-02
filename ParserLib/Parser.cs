@@ -12,9 +12,9 @@ namespace ParserLib
             _parser = parser;
         }
 
-        public async Task<IProgramContext> GetProgramContext() 
+        public IProgramContext GetProgramContext() 
         { 
-            return await _parser.GetProgramContext();
+            return _parser.GetProgramContext();
         }
     }
 }

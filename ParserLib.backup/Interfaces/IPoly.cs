@@ -3,7 +3,7 @@ using System.Windows.Media.Media3D;
 
 namespace ParserLib.Interfaces
 {
-    public interface IPoly : IEntity
+    internal interface IPoly : IEntity
     {
         int Sides { get; set; }
         Point3D NormalPoint { get; set; }

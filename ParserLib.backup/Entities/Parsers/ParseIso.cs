@@ -15,14 +15,15 @@ using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Services.Parsers
 {
-    public class ParseMpf : IParser
+    public class ParseIso : IParser
     {
         public string Filename { get; set; }
         private Regex GcodeAxesQuotaRegex;
         private Regex VariableDeclarationRegex;
         private Regex MacroParsRegex;
         private double _conversionValue = 1;
-        public ParseMpf(string fileName)
+        Stopwatch wat = new Stopwatch();
+        public ParseIso(string fileName)
         {
 
             Filename = fileName;
@@ -37,7 +38,7 @@ namespace ParserLib.Services.Parsers
         }
 
 
-        private static List<string> ReadTextLinesAsync(string path, Encoding encoding)
+        public static async Task<List<string>> ReadTextLinesAsync(string path, Encoding encoding)
         {
             var fileTextContent = new List<string>();
             using (var fileStream = new FileStream(path,
@@ -47,7 +48,7 @@ namespace ParserLib.Services.Parsers
             encoding))
             {
                 string text;
-                while ((text = streamReader.ReadLine())
+                while ((text = await streamReader.ReadLineAsync())
                   != null)
                 {
                     fileTextContent.Add(text);
@@ -58,8 +59,7 @@ namespace ParserLib.Services.Parsers
 
         Dictionary<string, List<Tuple<int, string>>> _dicSubprograms;
 
-
-        public IProgramContext GetProgramContext()
+        public async Task<IProgramContext> GetProgramContext()
         {
             var programContext = new ProgramContext();
 
@@ -69,20 +69,22 @@ namespace ParserLib.Services.Parsers
             programContext.LastEntity = new LinearMove();
             programContext.LastEntity.EndPoint = new Point3D(0, 0, 0);
 
-            programContext.Moves = GetMoves(programContext);
+            programContext.Moves = await GetMoves(programContext);
 
             return programContext;
         }
 
 
-        private  List<Tuple<int, string>> ReadAndFilterLinesFromFile()
+        private async Task<List<Tuple<int, string>>> ReadAndFilterLinesFromFile()
         {
             List<Tuple<int, string>> lstMoves = new List<Tuple<int, string>>();
 
-
+            await Task.Run(async () =>
+            {
                 try
                 {
-                    var lines = ReadTextLinesAsync(Filename, System.Text.Encoding.Default);
+                    wat.Restart();
+                    var lines = await ReadTextLinesAsync(Filename, System.Text.Encoding.Default);
 
                     //var lines = await WriteSafeReadAllLinesAsync(Filename);
 
@@ -104,27 +106,23 @@ namespace ParserLib.Services.Parsers
 
                             lineNumber += 1;
 
-                            if (lineToClean.StartsWith(";") || string.IsNullOrEmpty(lineToClean) || string.IsNullOrWhiteSpace(lineToClean))
+                            if (lineToClean.StartsWith(";") || lineToClean.StartsWith("(*") || lineToClean.StartsWith("//") || string.IsNullOrEmpty(lineToClean) || string.IsNullOrWhiteSpace(lineToClean))
                             {
                                 continue;
                             }
-                            if (lineToClean.StartsWith("P_MATERIAL")) { continue; }
+                            if (lineToClean.StartsWith("<MATERIAL")) { continue; }
 
-                            if (lineToClean.StartsWith("P_G08") || lineToClean.StartsWith("P_G09") || lineToClean.StartsWith("F") || lineToClean.StartsWith("EI") ||
-                                lineToClean.StartsWith("P_G40") || lineToClean.StartsWith("GO*") || lineToClean.StartsWith("P_G41") || lineToClean.StartsWith("P_G42"))
+                            if (lineToClean.StartsWith("G08") || lineToClean.StartsWith("G09") || lineToClean.StartsWith("F") || lineToClean.StartsWith("EI") ||
+                                lineToClean.StartsWith("G40") || lineToClean.StartsWith("GO*") || lineToClean.StartsWith("G41") || lineToClean.StartsWith("G42") || lineToClean.StartsWith("<MATERIAL"))
                             {
                                 continue;
                             }
 
-
-                            if (lineToClean.StartsWith("P_") == false
-                                || lineToClean.StartsWith("P_WORK_ON") || lineToClean.StartsWith("P_WORK_OFF") || lineToClean.StartsWith("P_WORK_TYPE") || lineToClean.StartsWith("P_BEAM_ON")
-                                || lineToClean.StartsWith("P_BEAM_OFF") || lineToClean.StartsWith("P_HOLE") || lineToClean.StartsWith("P_SLOT") || lineToClean.StartsWith("P_RECT")
-                                || lineToClean.StartsWith("P_CIRCLE") || lineToClean.StartsWith("P_KEYHOLE") || lineToClean.StartsWith("P_MARKING") || lineToClean.StartsWith("P_END_MARKING")
-                                || lineToClean.StartsWith("P_POLY") || lineToClean.StartsWith("P_SQUARE") || lineToClean.StartsWith("P_APPROACH_MC") || lineToClean.StartsWith("P_RETRACT_MC")
-                                || lineToClean.StartsWith("P_G01") || lineToClean.StartsWith("P_G00") || lineToClean.StartsWith("P_G104") || lineToClean.StartsWith("P_G90")
-                                || lineToClean.StartsWith("P_G70") || lineToClean.StartsWith("P_G71") || lineToClean.StartsWith("P_G102") || lineToClean.StartsWith("P_G103")
-                                )
+                            if (lineToClean.StartsWith("$") == false
+                                || lineToClean.StartsWith("$(WORK_ON") || lineToClean.StartsWith("$(WORK_OFF") || lineToClean.StartsWith("$(WORK_TYPE)") || lineToClean.StartsWith("$(BEAM_ON")
+                                || lineToClean.StartsWith("$(BEAM_OFF") || lineToClean.StartsWith("$(HOLE)") || lineToClean.StartsWith("$(SLOT") || lineToClean.StartsWith("$(RECT")
+                                || lineToClean.StartsWith("$(CIRCLE") || lineToClean.StartsWith("$(KEYHOLE") || lineToClean.StartsWith("$(MARKING") || lineToClean.StartsWith("$(END_MARKING")
+                                || lineToClean.StartsWith("$(POLY") || lineToClean.StartsWith("$(SQUARE"))
                             {
 
                                 var lineCleaned = CleanLine(lineToClean);
@@ -266,20 +264,17 @@ namespace ParserLib.Services.Parsers
                 }
                 catch (Exception ex)
                 {
-
                     Console.WriteLine("Error " + ex.Message);
                 }
-
-
-           
+            });
 
             return lstMoves;
         }
 
-
-        private  IList<IBaseEntity> GetMoves(ProgramContext programContext=null)
+        private async Task<IList<IBaseEntity>> GetMoves(ProgramContext programContext = null)
         {
-            List<Tuple<int, string>> lstMoves = ReadAndFilterLinesFromFile();
+
+            List<Tuple<int, string>> lstMoves = await ReadAndFilterLinesFromFile();
 
             if (programContext == null)
             {
@@ -292,52 +287,80 @@ namespace ParserLib.Services.Parsers
                 programContext.LastEntity.EndPoint = new Point3D(0, 0, 0);
             }
 
-            IList<IBaseEntity> moves = GetMoves(programContext, lstMoves);
+            IList<IBaseEntity> moves = await GetMoves(programContext, lstMoves);
 
-            foreach (var item in macroNotConverted)
-            {
-                Console.WriteLine(item);
-            }
+            //foreach (var item in macroNotConverted)
+            //{
+            //    Console.WriteLine(item);
+            //}
 
             return moves;
         }
 
-        private IList<IBaseEntity> GetMoves(ProgramContext programContext, List<Tuple<int, string>> lstMoves)
+        private async Task<IList<IBaseEntity>> GetMoves(ProgramContext programContext, List<Tuple<int, string>> lstMoves)
         {
-            var moves = new List<IBaseEntity>();
 
+            List<IBaseEntity> moves = new List<IBaseEntity>();
 
+            await Task.Run(async () =>
+            {
                 try
                 {
+
                     foreach (var t in lstMoves)
                     {
                         var line = t.Item2.Trim();
-                        if (line.StartsWith("P_G08") || line.StartsWith("P_G09") || line.StartsWith("P_G40") || line.StartsWith("P_G41")) continue;
+                        if (line.StartsWith("G08") || line.StartsWith("G09") || line.StartsWith("G40") || line.StartsWith("G41")) continue;
                         programContext.SourceLine = t.Item1;
 
-                        IEntity entity = null;
-                        if (line.StartsWith("P_"))
+                        IBaseEntity entity = null;
+                        if (line.StartsWith("$"))
                         {
                             ParseMacro(line, ref programContext, ref entity);
+                        }
+                        else if (line.StartsWith("G"))
+                        {
+                            ParseGLine(line, ref programContext, ref entity);
+                        }
+                        else if (line.StartsWith("N"))
+                        {
+                            ParseNLine(line, ref programContext, ref entity);
+                        }
+                        else if (line.StartsWith("Q"))
+                        {
+                            ParseQLine(line, ref programContext, ref entity);
+                        }
+                        else if (line.StartsWith("M"))
+                        {
+                            ParseMLine(line, ref programContext, ref entity);
                         }
 
                         if (entity != null)
                         {
-
-                            programContext.UpdateProgramCenterPoint();
-
                             moves.Add(entity);
+                            programContext.UpdateProgramCenterPoint();
                         }
                     }
+
+#if DEBUG
+                    wat.Stop();
+                    //Console.WriteLine($"Time to parse Iso: ms {wat.ElapsedMilliseconds}");
+#endif
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine("Error " + ex.Message);
                 }
-           
-            
+            });
+
             return moves;
         }
+
+        //private async Task RequestToGetInputReport()
+        //{
+        //    // lots of code prior to this
+        //    int bytesRead = await GetInputReportViaInterruptTransfer();
+        //}
 
         private void ReadSubprograms(List<string> lst, int lineNumber)
         {
@@ -385,24 +408,127 @@ namespace ParserLib.Services.Parsers
             }
         }
 
-        private IEntity CalculateStartAndEndPoint(ProgramContext programContext, IEntity entity, string[] quotas)
+
+        private void ParseMLine(string line, ref ProgramContext programContext, ref IBaseEntity entity)
+        {
+            //throw new NotImplementedException();
+        }
+
+        private void ParseQLine(string line, ref ProgramContext programContext, ref IBaseEntity entity)
+        {
+            //throw new NotImplementedException();
+        }
+
+        private void ParseNLine(string line, ref ProgramContext programContext, ref IBaseEntity entity)
+        {
+            //throw new NotImplementedException();
+        }
+
+        private void ParseGLine(string line, ref ProgramContext programContext, ref IBaseEntity entity)
+        {
+            if (line.StartsWith("G00 Z=P1") && programContext.Is2DProgram)
+            {
+                return;
+            }
+
+            var m = GcodeAxesQuotaRegex.Matches(line);
+
+            if (m[0].Value.Length > 1)
+            {
+                var gCodeNumber = int.Parse(m[0].Value.Substring(1));
+
+                switch (gCodeNumber)
+                {
+                    case 0:
+                    case 1:
+                        if (m.Count == 1) return;
+                        entity = new LinearMove { OriginalLine = line };
+                        entity = CalculateStartAndEndPoint(programContext, entity, m);
+
+                        break;
+                    case 70:
+                    case 71:
+                        _conversionValue = gCodeNumber == 70 ? 25.4 : 1;
+                        programContext.IsInchProgram = gCodeNumber == 70;
+                        break;
+                    case 2:
+                    case 3:
+
+                        break;
+
+                    case 92:
+                    case 93:
+                    case 113:
+
+                        var refMove = programContext.ReferenceMove != null ? programContext.ReferenceMove : new LinearMove();
+
+                        //It's like to not have axes in the instruction such as G93
+                        //if (m.Count == 1)
+                        //{
+                        //    refMove.EndPoint = new Point3D(0, 0, 0);
+                        //}
+                        //else
+                        //{
+                        //    BuildMove(ref refMove, new Point3D(0, 0, 0), m, programContext);
+                        //}
+                        //programContext.ReferenceMove = refMove;
+
+                        break;
+
+                    case 90:
+                        programContext.IsIncremental = false;
+                        break;
+                    case 91:
+                        programContext.IsIncremental = true;
+                        break;
+                    case 100:
+                        break;
+
+                    case 102:
+                    case 103:
+                        break;
+                    case 104:
+                        entity = new ArcMove { OriginalLine = line };
+                        entity = CalculateStartAndEndPoint(programContext, entity, m);
+
+
+
+                        break;
+
+
+                    default:
+                        break;
+                }
+
+                if (entity != null)
+                {
+                    entity.Is2DProgram = programContext.Is2DProgram;
+                    programContext.LastEntity = (entity as IEntity);
+                }
+            }
+        }
+
+        private IBaseEntity CalculateStartAndEndPoint(ProgramContext programContext, IBaseEntity entity, MatchCollection m)
         {
             entity.SourceLine = programContext.SourceLine;
             entity.IsBeamOn = programContext.IsBeamOn;
             entity.LineColor = programContext.ContourLineType;
+            if (entity.SourceLine > 13145)
+            {
 
-            entity.StartPoint = Create3DPoint(programContext, programContext.LastEntity.EndPoint);
+            }
+            (entity as IEntity).StartPoint = Create3DPoint(programContext, programContext.LastEntity.EndPoint);
 
-            BuildMove(programContext, ref entity, quotas);
+            BuildMove(ref entity, (entity as IEntity).StartPoint, m, programContext);
 
 
             if (programContext.IsIncremental == false)
             {
-                entity.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, entity.EndPoint); //new Point3D(programContext.ReferenceMove.EndPoint.X + entity.EndPoint.X, programContext.ReferenceMove.EndPoint.Y + entity.EndPoint.Y, programContext.ReferenceMove.EndPoint.Z + entity.EndPoint.Z);
+                (entity as IEntity).EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, (entity as IEntity).EndPoint); //new Point3D(programContext.ReferenceMove.EndPoint.X + entity.EndPoint.X, programContext.ReferenceMove.EndPoint.Y + entity.EndPoint.Y, programContext.ReferenceMove.EndPoint.Z + entity.EndPoint.Z);
             }
             else
             {
-                entity.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, programContext.LastEntity.EndPoint, entity.EndPoint); //new Point3D(programContext.ReferenceMove.EndPoint.X + entity.EndPoint.X, programContext.ReferenceMove.EndPoint.Y + entity.EndPoint.Y, programContext.ReferenceMove.EndPoint.Z + entity.EndPoint.Z);
+                (entity as IEntity).EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, programContext.LastEntity.EndPoint, (entity as IEntity).EndPoint); //new Point3D(programContext.ReferenceMove.EndPoint.X + entity.EndPoint.X, programContext.ReferenceMove.EndPoint.Y + entity.EndPoint.Y, programContext.ReferenceMove.EndPoint.Z + entity.EndPoint.Z);
             }
 
 
@@ -413,11 +539,6 @@ namespace ParserLib.Services.Parsers
                 GeoHelper.AddCircularMoveProperties(ref arcMove);
             }
 
-            if (entity != null)
-            {
-                entity.Is2DProgram = programContext.Is2DProgram;
-                programContext.LastEntity = entity;
-            }
 
             return entity;
         }
@@ -452,301 +573,232 @@ namespace ParserLib.Services.Parsers
         }
 
 
-        private void ParseMacro(string lineP, ref ProgramContext programContext, ref IEntity entity)
+        private void ParseMacro(string line, ref ProgramContext programContext, ref IBaseEntity entity)
         {
-            MatchCollection macroParFounded;
-
-            var macroName = lineP.Split('(')[0].Trim().ToUpper();
-
-            var line = lineP.Replace(macroName, "");
-
-            switch (macroName)
+            if (line.StartsWith("$(WORK_ON)") || line.StartsWith("$(MARKING)") || line.StartsWith("$(BEAM_ON)"))
             {
-                case "P_WORK_TYPE":
-                    var macroParFoundedWt = MacroParsRegex.Match(line).Value;
-                    programContext.Is2DProgram = macroParFoundedWt == "1";
-                    programContext.Is3DProgram = macroParFoundedWt == "2";
-                    programContext.IsTubeProgram = macroParFoundedWt == "3";
-                    programContext.IsWeldProgram = macroParFoundedWt == "4";
-                    break;
-                case "P_WORK_ON":
-                case "P_MARKING":
-                case "P_BEAM_ON":
-                    programContext.IsBeamOn = true;
+                programContext.IsBeamOn = true;
 
-                    if (programContext.IsMarkingProgram == false)
+                if (programContext.IsMarkingProgram == false)
+                {
+                    if (line.StartsWith("$(WORK_ON)"))
                     {
-                        if (lineP.StartsWith("P_WORK_ON"))
-                        {
-                            var lineType = int.Parse(line.Replace("P_WORK_ON", string.Empty).Replace("(", "").Trim().Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries)[0]);
-                            programContext.ContourLineType = (ELineType)lineType;
-                        }
-                        else if (lineP.StartsWith("P_MARKING"))
-                        {
-                            programContext.ContourLineType = ELineType.Marking;
-                        }
+                        var lineType = int.Parse(line.Replace("$(WORK_ON)", string.Empty).Replace("(", "").Trim().Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries)[0]);
+                        programContext.ContourLineType = (ELineType)lineType;
                     }
-                    else
+                    else if (line.StartsWith("$(MARKING)"))
                     {
                         programContext.ContourLineType = ELineType.Marking;
                     }
-                    break;
-                case "P_WORK_OFF":
-                case "P_END_MARKING":
-                case "BEAM_OFF":
-                    programContext.IsBeamOn = false;
-                    programContext.ContourLineType = ELineType.Rapid;
-                    break;
-                case "P_MARKING_PIECE":
-                    programContext.IsMarkingProgram = true;
-                    break;
-                case "P_HOLE":
-                    macroParFounded = MacroParsRegex.Matches(line);
+                }
+                else
+                {
+                    programContext.ContourLineType = ELineType.Marking;
+                }
+            }
+            else if (line.StartsWith("$(WORK_OFF)") || line.StartsWith("$(END_MARKING)") || line.StartsWith("$(BEAM_OFF)"))
+            {
+                programContext.IsBeamOn = false;
+                programContext.ContourLineType = ELineType.Rapid;
+            }
+            else if (line.StartsWith("$(MARKING_PIECE)"))
+            {
+                programContext.IsMarkingProgram = true;
+            }
+            else if (line.StartsWith("$(HOLE)"))
+            {
 
-                    Point3D pSlotCenter = new Point3D(Converter(macroParFounded[0].Value), Converter(macroParFounded[1].Value), Converter(macroParFounded[2].Value));
-                    Point3D pSlotNormal = new Point3D(Converter(macroParFounded[3].Value), Converter(macroParFounded[4].Value), Converter(macroParFounded[5].Value));
+                var macroParFounded = MacroParsRegex.Matches(line);
 
-                    entity = new ArcMove
-                    {
-                        IsStroked = true,
-                        IsLargeArc = true,
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = programContext.IsBeamOn,
-                        LineColor = programContext.ContourLineType,
-                        OriginalLine = lineP,
-                        Radius = Math.Abs(Converter(macroParFounded[6].Value)),//Aggiunto math.abs perchè... Se si vedessero comportamenti strani, verificare che la direzione della normale segua la regola della mano sinistra rispetto al verso di percorrenza dell'arco.
-                        CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pSlotCenter),
-                        NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pSlotNormal),
-                    };
+                var cX = Converter(macroParFounded[0].Value);
+                var cY = Converter(macroParFounded[1].Value);
+                var cZ = Converter(macroParFounded[2].Value);
+                Point3D pC = new Point3D(cX, cY, cZ);
+                var nX = Converter(macroParFounded[3].Value);
+                var nY = Converter(macroParFounded[4].Value);
+                var nZ = Converter(macroParFounded[5].Value);
+                Point3D pN = new Point3D(nX, nY, nZ);
 
-                    var holeMacro = entity as ArcMove;
-                    GeoHelper.GetMoveFromMacroHole(ref holeMacro);
-                    break;
-                case "P_SLOT":
-                    macroParFounded = MacroParsRegex.Matches(line);
+                var radius = Converter(macroParFounded[6].Value);
 
-                    var c1X = Converter(macroParFounded[0].Value);
-                    var c1Y = Converter(macroParFounded[1].Value);
-                    var c1Z = Converter(macroParFounded[2].Value);
-                    Point3D pC1 = new Point3D(c1X, c1Y, c1Z);
+                entity = new ArcMove
+                {
+                    IsStroked = true,
+                    IsLargeArc = true,
+                    SourceLine = programContext.SourceLine,
+                    IsBeamOn = programContext.IsBeamOn,
+                    LineColor = programContext.ContourLineType,
+                    OriginalLine = line,
+                    Radius = Math.Abs(radius),//Aggiunto math.abs perchè... Se si vedessero comportamenti strani, verificare che la direzione della normale segua la regola della mano sinistra rispetto al verso di percorrenza dell'arco.
+                    CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC),
+                    NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                };
 
-                    var c2X = Converter(macroParFounded[3].Value);
-                    var c2Y = Converter(macroParFounded[4].Value);
-                    var c2Z = Converter(macroParFounded[5].Value);
-                    Point3D pC2 = new Point3D(c2X, c2Y, c2Z);
+                var holeMacro = entity as ArcMove;
+                GeoHelper.GetMoveFromMacroHole(ref holeMacro);
 
-                    var nX = Converter(macroParFounded[6].Value);
-                    var nY = Converter(macroParFounded[7].Value);
-                    var nZ = Converter(macroParFounded[8].Value);
-                    Point3D pN = new Point3D(nX, nY, nZ);
+            }
+            else if (line.StartsWith("$(SLOT)"))
+            {
 
-                    var radius = Converter(macroParFounded[9].Value);
+                var macroParFounded = MacroParsRegex.Matches(line);
 
+                var c1X = Converter(macroParFounded[0].Value);
+                var c1Y = Converter(macroParFounded[1].Value);
+                var c1Z = Converter(macroParFounded[2].Value);
+                Point3D pC1 = new Point3D(c1X, c1Y, c1Z);
 
-                    entity = new SlotMove()
-                    {
+                var c2X = Converter(macroParFounded[3].Value);
+                var c2Y = Converter(macroParFounded[4].Value);
+                var c2Z = Converter(macroParFounded[5].Value);
+                Point3D pC2 = new Point3D(c2X, c2Y, c2Z);
 
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = programContext.IsBeamOn,
-                        LineColor = programContext.ContourLineType,
-                        OriginalLine = lineP,
-                        Arc1 = new ArcMove
-                        {
-                            SourceLine = programContext.SourceLine,
-                            IsBeamOn = programContext.IsBeamOn,
-                            LineColor = programContext.ContourLineType,
-                            OriginalLine = lineP,
-                            IsStroked = true,
-                            IsLargeArc = true,
-                            Radius = Math.Abs(radius),
-                            CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC1),
-                            NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
-                        },
-                        Arc2 = new ArcMove
-                        {
-                            SourceLine = programContext.SourceLine,
-                            IsBeamOn = programContext.IsBeamOn,
-                            LineColor = programContext.ContourLineType,
-                            OriginalLine = lineP,
-                            IsStroked = true,
-                            IsLargeArc = true,
-                            Radius = Math.Abs(radius),
-                            CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC2),
-                            NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
-                        },
-                        Line1 = new LinearMove()
-                        {
-                            SourceLine = programContext.SourceLine,
-                            IsBeamOn = programContext.IsBeamOn,
-                            LineColor = programContext.ContourLineType,
-                            OriginalLine = lineP,
-                        },
-                        Line2 = new LinearMove()
-                        {
-                            SourceLine = programContext.SourceLine,
-                            IsBeamOn = programContext.IsBeamOn,
-                            LineColor = programContext.ContourLineType,
-                            OriginalLine = lineP,
-                        }
+                var nX = Converter(macroParFounded[6].Value);
+                var nY = Converter(macroParFounded[7].Value);
+                var nZ = Converter(macroParFounded[8].Value);
+                Point3D pN = new Point3D(nX, nY, nZ);
 
-                    };
+                var radius = Converter(macroParFounded[9].Value);
 
 
-                    var slotMove = entity as SlotMove;
-                    GeoHelper.GetMovesFromMacroSlot(ref slotMove);
-                    slotMove.EndPoint = slotMove.Line2.EndPoint;
-                    break;
-                case "P_APPROACH_MC":
-                case "P_RETRACT_MC":
-                    macroParFounded = MacroParsRegex.Matches(line);
+                entity = new SlotMove()
+                {
 
-                    var X = GetQuotaValue(macroParFounded[0].Value, programContext);
-                    var Y = GetQuotaValue(macroParFounded[1].Value, programContext);
-                    var Z = GetQuotaValue(macroParFounded[2].Value, programContext);
-
-                    entity = new LinearMove()
-                    {
-                        StartPoint = programContext.LastEntity.EndPoint,
-                        EndPoint = new Point3D(X, Y, Z),
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = false,
-                        LineColor = ELineType.Rapid,
-                        OriginalLine = lineP
-                    };
-                    break;
-
-                case "P_POLY":
-                    var polyParFounded = MacroParsRegex.Matches(line);
-
-                    var centerPointPolyX = Converter(polyParFounded[0].Value);
-                    var centerPointPolyY = Converter(polyParFounded[1].Value);
-                    var centerPointPolyZ = Converter(polyParFounded[2].Value);
-                    Point3D centerPointPoly = new Point3D(centerPointPolyX, centerPointPolyY, centerPointPolyZ);
-
-                    var verticePointPolyX = Converter(polyParFounded[3].Value);
-                    var verticePointPolyY = Converter(polyParFounded[4].Value);
-                    var verticePointPolyZ = Converter(polyParFounded[5].Value);
-                    Point3D vertexPointPoly = new Point3D(verticePointPolyX, verticePointPolyY, verticePointPolyZ);
-
-                    var normalPointPolyX = Converter(polyParFounded[6].Value);
-                    var normalPointPolyY = Converter(polyParFounded[7].Value);
-                    var normalPointPolyZ = Converter(polyParFounded[8].Value);
-                    Point3D normalPointPoly = new Point3D(normalPointPolyX, normalPointPolyY, normalPointPolyZ);
-
-                    int.TryParse(polyParFounded[9].Value, out int sides);
-
-                    var radiusPoly = (polyParFounded.Count < 11) ? 0.0 : Converter(polyParFounded[10].Value);
-
-                    entity = new PolyMoves()
+                    SourceLine = programContext.SourceLine,
+                    IsBeamOn = programContext.IsBeamOn,
+                    LineColor = programContext.ContourLineType,
+                    OriginalLine = line,
+                    Arc1 = new ArcMove
                     {
                         SourceLine = programContext.SourceLine,
                         IsBeamOn = programContext.IsBeamOn,
                         LineColor = programContext.ContourLineType,
                         OriginalLine = line,
-                        Sides = sides,
-                        Radius = radiusPoly,
-                        VertexPoint = vertexPointPoly,
-                        NormalPoint = normalPointPoly,
-                        CenterPoint = centerPointPoly
-                    };
+                        IsStroked = true,
+                        IsLargeArc = true,
+                        Radius = Math.Abs(radius),
+                        CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC1),
+                        NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                    },
+                    Arc2 = new ArcMove
+                    {
+                        SourceLine = programContext.SourceLine,
+                        IsBeamOn = programContext.IsBeamOn,
+                        LineColor = programContext.ContourLineType,
+                        OriginalLine = line,
+                        IsStroked = true,
+                        IsLargeArc = true,
+                        Radius = Math.Abs(radius),
+                        CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC2),
+                        NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                    },
+                    Line1 = new LinearMove()
+                    {
+                        SourceLine = programContext.SourceLine,
+                        IsBeamOn = programContext.IsBeamOn,
+                        LineColor = programContext.ContourLineType,
+                        OriginalLine = line,
+                    },
+                    Line2 = new LinearMove()
+                    {
+                        SourceLine = programContext.SourceLine,
+                        IsBeamOn = programContext.IsBeamOn,
+                        LineColor = programContext.ContourLineType,
+                        OriginalLine = line,
+                    }
 
-                    var polyMove = entity as PolyMoves;
-                    GeoHelper.GetMovesFromMacroPoly(ref polyMove);
-                    break;
-                case "P_G00":
-                case "P_G01":
-                    var g01Pars = GetParsFromLine(line);
-                    entity = new LinearMove { OriginalLine = lineP };
-                    entity = CalculateStartAndEndPoint(programContext, entity, g01Pars);
-                    break;
-                case "P_G70":
-                case "P_G71":
-                    _conversionValue = macroName == "P_70" ? 25.4 : 1;
-                    programContext.IsInchProgram = macroName == "P_70";
-                    break;
-                case "P_G92":
-                    programContext.IsIncremental = false;
-                    break;
-                case "P_G90":
-                    programContext.IsIncremental = false;
-                    break;
-                case "P_G91":
-                    programContext.IsIncremental = true;
-                    break;
-                case "P_G93":
-                    // macroParFounded = MacroParsRegex.Matches(line);
-
-                    break;
-                case "P_G100":
-                    break;
-
-                case "P_G102":
-                case "P_G103":
-                    break;
-                case "P_G104":
-
-                    var g104Pars = GetParsFromLine(line);
-                    entity = new ArcMove { OriginalLine = lineP };
-                    entity = CalculateStartAndEndPoint(programContext, entity, g104Pars);
-                    break;
+                };
 
 
-                default:
+                var slotMove = entity as SlotMove;
+                GeoHelper.GetMovesFromMacroSlot(ref slotMove);
 
-                    break;
             }
-
-            if (entity != null)
+            else if (line.StartsWith("$(POLY)"))
             {
-                entity.Is2DProgram = programContext.Is2DProgram;
-                programContext.LastEntity = entity;
+
+                var macroParFounded = MacroParsRegex.Matches(line);
+
+                var c1X = Converter(macroParFounded[0].Value);
+                var c1Y = Converter(macroParFounded[1].Value);
+                var c1Z = Converter(macroParFounded[2].Value);
+                Point3D centerPoint = new Point3D(c1X, c1Y, c1Z);
+
+                var v1X = Converter(macroParFounded[3].Value);
+                var v1Y = Converter(macroParFounded[4].Value);
+                var v1Z = Converter(macroParFounded[5].Value);
+                Point3D vertexPoint = new Point3D(v1X, v1Y, v1Z);
+
+                var nX = Converter(macroParFounded[6].Value);
+                var nY = Converter(macroParFounded[7].Value);
+                var nZ = Converter(macroParFounded[8].Value);
+                Point3D normalPoint = new Point3D(nX, nY, nZ);
+
+                int.TryParse(macroParFounded[9].Value,out int sides);
+
+                var radius =(macroParFounded.Count<11)?0.0: Converter(macroParFounded[10].Value);
+
+                entity = new PolyMoves()
+                {
+                    SourceLine = programContext.SourceLine,
+                    IsBeamOn = programContext.IsBeamOn,
+                    LineColor = programContext.ContourLineType,
+                    OriginalLine = line,
+                    Sides=sides,
+                    Radius=radius,
+                    VertexPoint= vertexPoint,
+                    NormalPoint= normalPoint,
+                    CenterPoint= centerPoint
+                    
+                };
+
+                var polyMove = entity as PolyMoves;
+                GeoHelper.GetMovesFromMacroPoly(ref polyMove);
+
+            }
+            else if (line.StartsWith("$(WORK_TYPE)"))
+            {
+                var macroParFounded = MacroParsRegex.Match(line).Value;
+                programContext.Is2DProgram = macroParFounded == "1";
+
+                programContext.Is3DProgram = macroParFounded == "2";
+                programContext.IsTubeProgram = macroParFounded == "3";
+                programContext.IsWeldProgram = macroParFounded == "4";
+            }
+            else if (line.StartsWith("$(APPROACH_MC)") || line.StartsWith("$(RETRACT_MC)"))
+            {
+                var macroParFounded = MacroParsRegex.Matches(line);
+
+                var X = Converter(macroParFounded[0].Value);
+                var Y = Converter(macroParFounded[1].Value);
+                var Z = Converter(macroParFounded[2].Value);
+
+                entity = new LinearMove()
+                {
+                    StartPoint = programContext.LastEntity.StartPoint,
+                    EndPoint = new Point3D(X, Y, Z),
+                    SourceLine = programContext.SourceLine,
+                    IsBeamOn = false,
+                    LineColor = ELineType.Rapid,
+                    OriginalLine = line
+                };
+            }
+            else
+            {
+
+                var macroName = line.Substring(2, line.IndexOf(")") - 2).Trim();
+                if (macroNotConverted.Add(macroName))
+                {
+
+
+                }
+                //Console.WriteLine(macroName);
             }
         }
-
-
-        public string[] GetParsFromLine(string line)
-        {
-            var l = line.Replace("(", "").Replace(")", "").Replace(" ", "");
-
-            var splitted = l.Split(',');
-            var d = new List<string>();
-
-            var currentItem = string.Empty;
-            var nextItem = string.Empty;
-
-            for (int i = 0; i < splitted.Length; i++)
-            {
-                currentItem = splitted[i];
-                nextItem = i + 1 < splitted.Length ? splitted[i + 1] : "";
-                if (currentItem.StartsWith("Par") && nextItem != "")
-                {
-                    d.Add(nextItem);
-                    i++;
-                }
-                else if (currentItem.StartsWith("Par") && nextItem == "")
-                {
-                    d.Add("0");
-                    i++;
-                }
-                else
-                {
-                    d.Add(currentItem);
-                }
-
-                if (i == splitted.Length - 1) break;
-
-            }
-
-            return d.ToArray();
-
-
-
-        }
-
 
         HashSet<string> macroNotConverted = new HashSet<string>();
 
-        public string CleanLine(string lineToClean)
+        private string CleanLine(string lineToClean)
         {
 
             if (lineToClean.Contains("//") || lineToClean.Contains("(*"))
@@ -765,27 +817,47 @@ namespace ParserLib.Services.Parsers
         }
 
 
-        public void BuildMove(ProgramContext programContext, ref IEntity move, string[] quotas)
+        private void BuildMove(ref IBaseEntity entity, Point3D startPoint, MatchCollection matches, ProgramContext programContext)
         {
             var endPoint = new Point3D(0, 0, 0);
             var viaPoint = new Point3D(0, 0, 0);
 
-            endPoint.X = GetQuotaValue(quotas[0], programContext);
-            endPoint.Y = GetQuotaValue(quotas[1], programContext);
-            endPoint.Z = programContext.Is2DProgram ? 0.0 : GetQuotaValue(quotas[2], programContext);
-
-            if (quotas.Length > 7)
+            for (int i = 1; i < matches.Count; i++)
             {
-                viaPoint.X = GetQuotaValue(quotas[5], programContext);
-                viaPoint.Y = GetQuotaValue(quotas[6], programContext);
-                viaPoint.Z = programContext.Is2DProgram ? 0.0 : GetQuotaValue(quotas[7], programContext);
+                var ax = matches[i].ToString();
+
+                var axName = ax[0];
+
+                if (axName == 'A' || axName == 'B' || axName == 'F' || axName == 'L' || axName == 'C' || axName == 'U' || axName == 'V' || axName == 'W' || axName == 'G') continue;
+
+                var axValue = ax.Substring(1).Replace("=", "");
+                if (char.IsLetter(axValue[0]) == true) axValue = "0";
+
+                var axValueD = GetQuotaValue(axValue.Trim(), programContext);
+
+                switch (axName)
+                {
+                    case 'X': endPoint.X = axValueD; break;
+                    case 'Y': endPoint.Y = axValueD; break;
+                    case 'Z': endPoint.Z = programContext.Is2DProgram ? 0.0 : axValueD; break;
+
+                    case 'I': viaPoint.X = axValueD; break;
+                    case 'J': viaPoint.Y = axValueD; break;
+                    case 'K': viaPoint.Z = programContext.Is2DProgram ? 0.0 : axValueD; break;
+
+                    default:
+                        break;
+                }
+
+
+
             }
 
-            move.EndPoint = endPoint;
+            (entity as IEntity).EndPoint = endPoint;
 
-            if (move.EntityType == EEntityType.Arc || move.EntityType == EEntityType.Circle)
+            if (entity.EntityType == EEntityType.Arc || entity.EntityType == EEntityType.Circle)
             {
-                (move as ArcMove).ViaPoint = viaPoint;
+                (entity as ArcMove).ViaPoint = viaPoint;
             }
         }
 

@@ -1,15 +1,20 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Media.Media3D;
 
 namespace ParserLib.Interfaces
 {
-    public interface IPoly : IEntity
+    public interface IRect : IEntity
     {
-        int Sides { get; set; }
-        Point3D NormalPoint { get; set; }
+
+        Point3D SidePoint { get; set; }
         Point3D CenterPoint { get; set; }
         Point3D VertexPoint { get; set; }
         List<ILine> Lines { get; set; }
+
 
     }
 }

@@ -1,19 +1,17 @@
 ﻿using Canvas3DViewer.Converters;
-using Microsoft.Win32;
+using Canvas3DViewer.Models;
+using Canvas3DViewer.ViewModels;
 using ParserLib;
 using ParserLib.Interfaces;
 using ParserLib.Models;
 using ParserLib.Services.Parsers;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
-
-using System.Linq;
-using System.Runtime.CompilerServices;
+using System.Runtime.Caching;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -28,63 +26,81 @@ namespace Canvas3DViewer
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class Window1 : Window, INotifyPropertyChanged
+    public partial class Window1 : Window
     {
         public int dbgCnt = 0;
         List<IBaseEntity> moves;
         public string Filename { get; set; }
 
-        public Point previousCoordinate;
-        public Point3D centerRotation = new Point3D(150, 150, 0);
-        From3DTo2DPointConversion from3Dto2DPointConversion = null;
+        private Point previousCoordinate;
+        private Point3D centerRotation = new Point3D(150, 150, 0);
+        private From3DTo2DPointConversion from3Dto2DPointConversion = null;
         private Brush _originalColor = null;
-        private ObservableCollection<System.IO.FileInfo> _cncFiles;
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        public ObservableCollection<System.IO.FileInfo> CncFiles { get => _cncFiles; set { _cncFiles = value; OnPropertyChanged(); } }
-        private ObservableCollection<string> _extFiles;
-        public ObservableCollection<string> ExtFiles { get => _extFiles; set { _extFiles = value; OnPropertyChanged(); } }
-
 
         public Window1()
         {
             InitializeComponent();
             System.Threading.Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("en-EN");
-            this.DataContext = this;
+            this.DataContext = new CncFilesViewModel();
             from3Dto2DPointConversion = new From3DTo2DPointConversion();
         }
 
-        private async void DrawProgram(string fullName)
+        private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            //this.DataContext = new CncFilesViewModel();
+        }
+
+        private ObjectCache cache = MemoryCache.Default;
+        public List<T> GetCachedDataList<T>(string key)
+        {
+            List<T> result = null;
+            if (cache.Contains(key))
+                result = cache[key] as List<T>;
+
+            foreach (var item in cache)
+            {
+                Console.WriteLine("cache object key-value: " + item.Key + "-" + item.Value);
+            }
+
+
+
+            return result;
+        }
+
+
+        private void DrawProgram(string fullName)
+        {
+            List<ParseIso> data = GetCachedDataList<ParseIso>("ParseIso") as List<ParseIso>;
+
+
+
+            Stopwatch st = new Stopwatch();
+            st.Start();
+
             try
             {
-
                 Parser parser = null;
 
-                if (SelectedExtensionFile == "*.iso")
+                if ((this.DataContext as CncFilesViewModel).SelectedExtensionFile == "*.iso")
                     parser = new Parser(new ParseIso(fullName));
-                else if (SelectedExtensionFile == "*.mpf")
+                else if ((this.DataContext as CncFilesViewModel).SelectedExtensionFile == "*.mpf")
                     parser = new Parser(new ParseMpf(fullName));
 
-
-                var programContext = (IProgramContext)await parser.GetProgramContext();
+                var programContext = parser.GetProgramContext();
                 moves = (List<IBaseEntity>)programContext.Moves;
 
                 if (moves == null) return;
 
                 centerRotation = programContext.CenterRotationPoint;
 
-                //int i = 0;
                 foreach (var item in moves)
                 {
-                    //i++;
                     if (item.IsBeamOn == false)
                     {
                         if (item.EntityType == EEntityType.Line && moves.Count < 2000)
                         {
                             DrawLine(item as LinearMove, true);
                         }
-
                     }
                     else
                     {
@@ -104,7 +120,6 @@ namespace Canvas3DViewer
                             DrawLine(slot.Line1 as LinearMove);
                             DrawArc(slot.Arc2 as ArcMove);
                             DrawLine(slot.Line2 as LinearMove);
-
                         }
                         else if (item.EntityType == EEntityType.Poly)
                         {
@@ -115,19 +130,28 @@ namespace Canvas3DViewer
                                 DrawLine(l as LinearMove);
                             }
                         }
+                        else if (item.EntityType == EEntityType.Rect)
+                        {
+                            var rect = item as RectMoves;
+
+                            foreach (var l in rect.Lines)
+                            {
+                                DrawLine(l as LinearMove);
+                            }
+                        }
 
                     }
                 }
 
-
                 InitialTransform();
-
             }
             catch (Exception ex)
             {
-
                 Console.WriteLine(ex.Message);
             }
+
+            var ms = st.ElapsedMilliseconds;
+            Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {ms}ms");
         }
 
         private void DrawArc(ArcMove arcMove)
@@ -137,7 +161,6 @@ namespace Canvas3DViewer
 
             BindingBase sourceBinding = new Binding { Source = arcMove, Path = new PropertyPath("StartPoint"), Converter = from3Dto2DPointConversion };
             BindingOperations.SetBinding(pf, PathFigure.StartPointProperty, sourceBinding);
-
 
             pf.Segments.Add(ls);
 
@@ -157,22 +180,21 @@ namespace Canvas3DViewer
 
             PathGeometry geometry = new PathGeometry();
             geometry.Figures.Add(pf);
-
-            Path p = new Path();
-            p.StrokeThickness = 1;
-            p.Tag = arcMove;
-            p.Stroke = GetLineColor(arcMove.LineColor);
             arcMove.GeometryPath = geometry;
 
-            p.Data = geometry;
-            p.MouseDown += MouseClickEntity;
+            Path p = new Path
+            {
+                StrokeThickness = 1,
+                Tag = arcMove,
+                Stroke = GetLineColor(arcMove.LineColor),
+                Data = geometry
+            };
 
+            p.MouseDown += MouseClickEntity;
             p.MouseEnter += MouseEnterEntity;
             p.MouseLeave += MouseLeaveEntity;
 
             canvas1.Children.Add(p);
-
-
         }
 
         private void DrawLine(LinearMove linearMove, bool isRapid = false)
@@ -220,44 +242,223 @@ namespace Canvas3DViewer
             canvas1.Children.Add(p);
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
+        private string CreateStringPoint(Point3D p, string s)
         {
-            ExtFiles = new ObservableCollection<string>();
-            ExtFiles.Add("*.mpf"); ExtFiles.Add("*.iso");
-            SelectedExtensionFile = Properties.Settings.Default.ExtensionFile;
-            LoadProgramsList();
-
+            return $"{s} X:{Math.Round(p.X, 3)} Y:{Math.Round(p.Y, 3)} Z:{Math.Round(p.Z, 3)}";
         }
 
-        private string _extFile;
-        public string SelectedExtensionFile
+        //private void InitialTransform()
+        //{
+
+
+        //    ////////////////////////////////////////////////////////////////////////////////////
+        //    //// ORIENTAMENTO VISUALIZZAZIONE (AL MOMENTO DIREZIONE Z- DALL'ALTO)
+
+
+        //    Matrix3D U = Matrix3D.Identity;
+        //    Matrix3D Un = Matrix3D.Identity;
+        //    Point3D cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
+
+        //    U.RotateAt(new Quaternion(new Vector3D(1, 0, 0), 180), cor);
+        //    Un.RotateAt(new Quaternion(new Vector3D(1, 0, 0), 180), new Point3D(0, 0, 0));
+
+
+        //    foreach (var item in moves)
+        //    {
+        //        item.Render(U, Un, false, 1);
+        //    }
+
+        //    //// shift al centro del canvas
+
+        //    double xMin = double.PositiveInfinity;
+        //    double xMax = double.NegativeInfinity;
+        //    double yMin = double.PositiveInfinity;
+        //    double yMax = double.NegativeInfinity;
+
+
+
+        //    foreach (var item in moves)
+        //    {
+        //        var entity = item as IEntity;
+        //        if (!item.IsBeamOn) { continue; }
+        //        if ((item is ArcMove) == false && item.Is2DProgram == false)
+        //        {
+        //            continue;
+        //        }
+
+        //        xMin = Math.Min(entity.BoundingBox.Item1, xMin);
+        //        xMax = Math.Max(entity.BoundingBox.Item2, xMax);
+        //        yMin = Math.Min(entity.BoundingBox.Item3, yMin);
+        //        yMax = Math.Max(entity.BoundingBox.Item4, yMax);
+        //    }
+
+        //    double xMed = (xMax + xMin) / 2;
+        //    double yMed = (yMax + yMin) / 2;
+
+        //    double yMedCanvas = canvas1.ActualHeight / 2;
+        //    double xMedCanvas = canvas1.ActualWidth / 2;
+
+        //    U.SetIdentity();
+        //    Un.SetIdentity();
+
+        //    U.OffsetX = xMedCanvas - xMed;
+        //    U.OffsetY = yMedCanvas - yMed;
+
+        //    cor = U.Transform(cor);
+
+        //    centerRotation.X = yMedCanvas;
+        //    centerRotation.Y = xMedCanvas;
+        //    centerRotation.Z = cor.Z;
+
+        //    cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
+
+
+        //    foreach (var item in moves)
+        //    {
+        //        item.Render(U, Un, false, 1);
+        //    }
+
+
+        //    ////////////////////////////////////////////////////////////////////////////////////
+        //    /// ZOOM FIT CANVAS
+
+        //    U.SetIdentity();
+        //    Un.SetIdentity();
+
+        //    double dX = xMax - xMin;
+        //    double dY = yMax - yMin;
+        //    double margin = 50;
+
+
+        //    //if (dX > dY)
+        //    //{
+        //    //    double Z = (canvas1.ActualWidth - margin) / dX;
+
+        //    //    U.ScaleAt(new Vector3D(Z, Z, Z), cor);
+
+        //    //    foreach (var item in moves)
+        //    //    {
+        //    //        item.Render(U, Un, false, Z);
+        //    //    }
+        //    //}
+        //    //else
+        //    //{
+        //    //    double Z = (canvas1.ActualHeight - margin) / dY;
+
+        //    //    U.ScaleAt(new Vector3D(Z, Z, Z), cor);
+
+        //    //    foreach (var item in moves)
+        //    //    {
+        //    //        item.Render(U, Un, false, Z);
+        //    //    }
+
+        //    //}
+
+        //    double newZ = (dX > dY) ? (canvas1.ActualWidth - margin) / dX : (canvas1.ActualHeight - margin) / dY;
+
+        //    //double Z = (canvas1.ActualWidth - margin) / divisionFactorZ;
+
+        //    U.ScaleAt(new Vector3D(newZ, newZ, newZ), cor);
+
+        //    foreach (var item in moves)
+        //    {
+        //        item.Render(U, Un, false, newZ);
+        //    }
+
+
+        //}
+
+        private void InitialTransform()
         {
-            get
+            #region Top View of the drawing
+            Matrix3D U = Matrix3D.Identity;
+            Matrix3D Un = Matrix3D.Identity;
+            Point3D cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
+
+            U.RotateAt(new Quaternion(new Vector3D(1, 0, 0), 180), cor);
+            Un.RotateAt(new Quaternion(new Vector3D(1, 0, 0), 180), new Point3D(0, 0, 0));
+
+            foreach (var item in moves)
             {
-                return _extFile;
+                item.Render(U, Un, false, 1);
             }
-            set
+            #endregion 
+
+            #region Shift Drawing in the center of the canvas
+
+            double xMin = double.PositiveInfinity;
+            double xMax = double.NegativeInfinity;
+            double yMin = double.PositiveInfinity;
+            double yMax = double.NegativeInfinity;
+
+            foreach (var item in moves)
             {
-                Properties.Settings.Default.ExtensionFile = value;
-                Properties.Settings.Default.Save();
+                if (!item.IsBeamOn) { continue; }
 
-                _extFile = value;
+                var entity = (item as IEntity);
+                if (double.IsInfinity(entity.BoundingBox.Item1) || double.IsInfinity(entity.BoundingBox.Item2) || double.IsInfinity(entity.BoundingBox.Item3) || double.IsInfinity(entity.BoundingBox.Item4))
+                    continue;
+                //if ((item is ArcMove) == false && item.Is2DProgram == false)
+                //{
+                //    continue;
+                //}
 
-                LoadProgramsList();
-                OnPropertyChanged("SelectedExtensionFile");
+                //if (entity.EntityType == EEntityType.Arc)
+                //{
+                //    continue;
+                //}
+
+                xMin = Math.Min(entity.BoundingBox.Item1, xMin);
+                xMax = Math.Max(entity.BoundingBox.Item2, xMax);
+                yMin = Math.Min(entity.BoundingBox.Item3, yMin);
+                yMax = Math.Max(entity.BoundingBox.Item4, yMax);
             }
-        }
 
-        private void LoadProgramsList()
-        {
-            if (System.IO.Directory.Exists(Properties.Settings.Default.CncProgramsPath))
+
+            double xMed = (xMax + xMin) / 2;
+            double yMed = (yMax + yMin) / 2;
+
+            double yMedCanvas = canvas1.ActualHeight / 2;
+            double xMedCanvas = canvas1.ActualWidth / 2;
+
+            U.SetIdentity();
+            Un.SetIdentity();
+
+            U.OffsetX = xMedCanvas - xMed;
+            U.OffsetY = yMedCanvas - yMed;
+
+            cor = U.Transform(cor);
+
+            centerRotation.X = yMedCanvas;
+            centerRotation.Y = xMedCanvas;
+            centerRotation.Z = cor.Z;
+
+            cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
+
+            foreach (var item in moves)
             {
-                System.IO.DirectoryInfo dt = new System.IO.DirectoryInfo(Properties.Settings.Default.CncProgramsPath);
-
-                List<System.IO.FileInfo> lst = new List<System.IO.FileInfo>(dt.GetFiles(SelectedExtensionFile, System.IO.SearchOption.AllDirectories));
-                CncFiles = new ObservableCollection<System.IO.FileInfo>(lst.OrderBy(n => n.Name));
-                txtIsoPrograms.Text = Properties.Settings.Default.CncProgramsPath;
+                item.Render(U, Un, false, 1);
             }
+            #endregion
+
+            #region Zoom drawing into Canvas
+            U.SetIdentity();
+            Un.SetIdentity();
+
+            double dX = xMax - xMin;
+            double dY = yMax - yMin;
+            double margin = 50;
+
+            double newZ = (dX > dY) ? (canvas1.ActualWidth - margin) / dX : (canvas1.ActualHeight - margin) / dY;
+
+            U.ScaleAt(new Vector3D(newZ, newZ, newZ), cor);
+
+            foreach (var item in moves)
+            {
+                item.Render(U, Un, false, newZ);
+            }
+            #endregion
+
         }
 
         private SolidColorBrush GetLineColor(ELineType lineColor)
@@ -315,11 +516,6 @@ namespace Canvas3DViewer
             }
         }
 
-        private string CreateStringPoint(Point3D p, string s)
-        {
-            return $"{s} X:{Math.Round(p.X, 3)} Y:{Math.Round(p.Y, 3)} Z:{Math.Round(p.Z, 3)}";
-        }
-
         private void MouseEnterEntity(object sender, MouseEventArgs e)
         {
             _originalColor = ((Path)sender).Stroke;
@@ -331,11 +527,6 @@ namespace Canvas3DViewer
         {
             ((Path)sender).Stroke = _originalColor;
             ((Path)sender).StrokeThickness = 1;
-        }
-
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
-        {
-            if (PropertyChanged != null) PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         private void canvas1_MouseDown(object sender, MouseButtonEventArgs e)
@@ -379,12 +570,8 @@ namespace Canvas3DViewer
                     {
                         item.Render(U, Un, true, 1);
                     }
-
-
                 }
-
                 previousCoordinate = Mouse.GetPosition(canvas1);
-
             }
             else if (e.RightButton == MouseButtonState.Pressed)
             {
@@ -411,119 +598,7 @@ namespace Canvas3DViewer
                 }
 
                 previousCoordinate = Mouse.GetPosition(canvas1);
-
             }
-
-
-        }
-
-        private void InitialTransform()
-        {
-
-
-            ////////////////////////////////////////////////////////////////////////////////////
-            //// ORIENTAMENTO VISUALIZZAZIONE (AL MOMENTO DIREZIONE Z- DALL'ALTO)
-
-
-            Matrix3D U = Matrix3D.Identity;
-            Matrix3D Un = Matrix3D.Identity;
-            Point3D cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
-
-            U.RotateAt(new Quaternion(new Vector3D(1, 0, 0), 180), cor);
-            Un.RotateAt(new Quaternion(new Vector3D(1, 0, 0), 180), new Point3D(0, 0, 0));
-
-
-            foreach (var item in moves)
-            {
-                item.Render(U, Un, false, 1);
-            }
-
-            //// shift al centro del canvas
-
-            double xMin = double.PositiveInfinity;
-            double xMax = double.NegativeInfinity;
-            double yMin = double.PositiveInfinity;
-            double yMax = double.NegativeInfinity;
-
-
-
-            foreach (var item in moves)
-            {
-                if (!item.IsBeamOn) { continue; }
-                if ((item is ArcMove) == false && item.Is2DProgram == false)
-                {
-                    continue;
-                }
-
-                xMin = Math.Min((item as IEntity).GeometryPath.Bounds.Left, xMin);
-                xMax = Math.Max((item as IEntity).GeometryPath.Bounds.Right, xMax);
-                yMin = Math.Min((item as IEntity).GeometryPath.Bounds.Bottom, yMin);
-                yMax = Math.Max((item as IEntity).GeometryPath.Bounds.Top, yMax);
-            }
-
-            double xMed = (xMax + xMin) / 2;
-            double yMed = (yMax + yMin) / 2;
-
-            double yMedCanvas = canvas1.ActualHeight / 2;
-            double xMedCanvas = canvas1.ActualWidth / 2;
-
-            U.SetIdentity();
-            Un.SetIdentity();
-
-            U.OffsetX = xMedCanvas - xMed;
-            U.OffsetY = yMedCanvas - yMed;
-
-            cor = U.Transform(cor);
-
-            centerRotation.X = yMedCanvas;
-            centerRotation.Y = xMedCanvas;
-            centerRotation.Z = cor.Z;
-
-            cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
-
-
-            foreach (var item in moves)
-            {
-                item.Render(U, Un, false, 1);
-            }
-
-
-            ////////////////////////////////////////////////////////////////////////////////////
-            /// ZOOM FIT CANVAS
-
-            U.SetIdentity();
-            Un.SetIdentity();
-
-            double dX = xMax - xMin;
-            double dY = yMax - yMin;
-            double margin = 50;
-
-
-            if (dX > dY)
-            {
-                double Z = (canvas1.ActualWidth - margin) / dX;
-
-                U.ScaleAt(new Vector3D(Z, Z, Z), cor);
-
-                foreach (var item in moves)
-                {
-                    item.Render(U, Un, false, Z);
-                }
-            }
-            else
-            {
-                double Z = (canvas1.ActualHeight - margin) / dY;
-
-                U.ScaleAt(new Vector3D(Z, Z, Z), cor);
-
-                foreach (var item in moves)
-                {
-                    item.Render(U, Un, false, Z);
-                }
-
-            }
-
-
         }
 
         private void canvas1_MouseWheel(object sender, MouseWheelEventArgs e)
@@ -535,22 +610,16 @@ namespace Canvas3DViewer
             {
                 Z = 1.1;
             }
-
-            if (e.Delta < 0)
+            else if (e.Delta < 0)
             {
                 Z = 1 / 1.1;
             }
-
 
             Point3D cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
 
             Matrix3D U = Matrix3D.Identity;
             Matrix3D Un = Matrix3D.Identity;
             Point3D PZ = new Point3D(Mouse.GetPosition(canvas1).X, Mouse.GetPosition(canvas1).Y, cor.Z);
-
-
-
-            //U.ScaleAt(new Vector3D(Z, Z, Z), cor);
 
             U.ScaleAt(new Vector3D(Z, Z, Z), PZ);
 
@@ -569,9 +638,9 @@ namespace Canvas3DViewer
         {
             canvas1.Children.Clear();
             if (e.AddedItems.Count == 0) return;
-            var fi = e.AddedItems[0] as System.IO.FileInfo;
-            Filename = fi.FullName;
-            DrawProgram(fi.FullName);
+            var fi = e.AddedItems[0] as CncFile;
+            Filename = fi.FullPath;
+            DrawProgram(Filename);
         }
 
         private void txtLine_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -593,19 +662,5 @@ namespace Canvas3DViewer
             }
         }
 
-        private void txtIsoPrograms_TextInput(object sender, TextCompositionEventArgs e)
-        {
-
-        }
-
-        private void txtIsoPrograms_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
-        {
-            if (System.IO.Directory.Exists(txtIsoPrograms.Text))
-            {
-                Properties.Settings.Default.CncProgramsPath = txtIsoPrograms.Text;
-                Properties.Settings.Default.Save();
-                LoadProgramsList();
-            }
-        }
     }
 }

@@ -15,7 +15,5 @@ namespace ParserLib.Interfaces
 
         void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius);
 
-        
-
     }
 }

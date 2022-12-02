@@ -3,9 +3,44 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Canvas3DViewer"
+        xmlns:gl="clr-namespace:System.Globalization;assembly=mscorlib"
+        xmlns:local="clr-namespace:Canvas3DViewer" xmlns:conv="clr-namespace:Canvas3DViewer.Converters"
         mc:Ignorable="d"
-        Title="Window1" Height="450" Width="800" Loaded="Window_Loaded" FontFamily="Segoe UI">
+        Title="Window1" Height="450" Width="800" FontFamily="Comfortaa" Loaded="Window_Loaded">
+    <Window.Resources>
+        <!--Control colors.-->
+        <conv:FontWeightConverter x:Key="FontWeightConverter" />
+        <SolidColorBrush Color="#E7873C" x:Key="OrangePrimaPower" />
+        <SolidColorBrush Color="#0089CF" x:Key="BluePrimaPower" />
+        <SolidColorBrush Color="#FFFFFF" x:Key="WhitePrimaPower" />
+        <SolidColorBrush Color="#ccc" x:Key="MenuButtonsDisableBGColor" />
+
+        <SolidColorBrush Color="Yellow" x:Key="YellowLedColor" />
+
+        <SolidColorBrush Color="#636466" x:Key="DarkGrayPrimaPower" />
+        <SolidColorBrush Color="#EFEFEF" x:Key="NormalGrayPrimaPower" />
+        <SolidColorBrush Color="#DBDBDB" x:Key="LightGrayPrimaPower" />
+
+        <Style TargetType="ListViewItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <Border Name="Border" Margin="3" Padding="6" SnapsToDevicePixels="true" BorderThickness="0.5" CornerRadius="4" BorderBrush="{StaticResource DarkGrayPrimaPower}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="true">
+                                <!--<Setter TargetName="Border" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>-->
+                                <Setter TargetName="Border" Property="Background" Value="{StaticResource BluePrimaPower}"/>
+                                <Setter  Property="Foreground" Value="{StaticResource WhitePrimaPower}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition/>
@@ -24,9 +59,43 @@
                 <RowDefinition Height="67*"/>
             </Grid.RowDefinitions>
 
-            <TextBox Grid.Row="1" Margin="2" VerticalContentAlignment="Center" Text="" x:Name="txtIsoPrograms" Background="White" TextInput="txtIsoPrograms_TextInput" TextChanged="txtIsoPrograms_TextChanged" />
+            <TextBox Grid.Row="1" Margin="2" VerticalContentAlignment="Center" Text="{Binding CncFilesProgramPath}" x:Name="txtIsoPrograms" Background="White" />
+            
             <ComboBox Grid.Row="2" Margin="5" ItemsSource="{Binding ExtFiles}" SelectedItem="{Binding SelectedExtensionFile}" />
-            <ListView Grid.Row="3" SelectionChanged="ListView_SelectionChanged" ItemsSource="{Binding CncFiles}" />
+
+            <ListView Padding="0" Name="listView" ItemsSource="{Binding CncFiles}" Grid.Row="3" SelectionChanged="ListView_SelectionChanged" SnapsToDevicePixels="True">
+                <ListView.Resources>
+                    <!-- attempt to override selection color -->
+                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightColorKey}" Color="Green" />
+                </ListView.Resources>
+                <ListView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel HorizontalAlignment="Stretch"></StackPanel>
+                    </ItemsPanelTemplate>
+                </ListView.ItemsPanel>
+                <ListView.ItemTemplate>
+                    <ItemContainerTemplate>
+                        <Grid Width="380" Background="Transparent" SnapsToDevicePixels="True">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="{Binding Name}" FontWeight="{Binding Material,Converter={StaticResource FontWeightConverter}}" Grid.Row="0" Margin="5" />
+                                <TextBlock Text="{Binding Path=LastWriteTime,StringFormat='dd-mm-yyyy hh:mm:ss'}" Grid.Row="2" Margin="5" />
+                                <TextBlock Grid.Row="1" Margin="5">
+                                    <Run Text="{Binding Material}" />
+                                    <Run Text="-" />
+                                    <Run Text="{Binding Thickness}" />
+                                    <Run Text="mm" />
+                                </TextBlock>
+                            </Grid>
+                        </Grid>
+                    </ItemContainerTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
             <StackPanel Grid.Row="4" VerticalAlignment="Top" Margin="10,10,10,0" Height="143">
                 <TextBlock Text="" x:Name="lbl" TextWrapping="Wrap" Margin="5,5" HorizontalAlignment="Left" Width="150" />
                 <TextBlock Text="" x:Name="txtLine" Margin="5,5" HorizontalAlignment="Left" MouseLeftButtonDown="txtLine_MouseLeftButtonDown"/>
@@ -35,7 +104,6 @@
                 <TextBlock Text="" x:Name="txtSP" HorizontalAlignment="Left"  Margin="5,5"/>
                 <TextBlock Text="" x:Name="txtVP" HorizontalAlignment="Left"  Margin="5,5"/>
                 <TextBlock Text="" x:Name="txtEP" HorizontalAlignment="Left"  Margin="5,5"/>
-
             </StackPanel>
         </Grid>
 

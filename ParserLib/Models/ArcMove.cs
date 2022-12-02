@@ -1,6 +1,5 @@
 ﻿using ParserLib.Interfaces;
 using System;
-using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
@@ -8,11 +7,13 @@ using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Models
 {
-    public class ArcMove : ViewModelBase,IArc
+    public class ArcMove : ViewModelBase, IArc
     {
         private double degreeToRad = Math.PI / 180;
         private Vector VectorForRotationAngleCalculation = new Vector(1, 0);
         private Vector3D vpn = new Vector3D(0, 0, 1);
+        private double strokeThickness = 1;
+
 
         public bool Is2DProgram { get; set; }
         public Point3D EndPoint { get; set; }
@@ -26,7 +27,7 @@ namespace ParserLib.Models
         public EEntityType EntityType { get => EEntityType.Arc; }
         public int SourceLine { get; set; }
 
-        public string OriginalLine{ get; set; }
+        public string OriginalLine { get; set; }
 
         public bool IsStroked { get; set; }
         public bool IsBeamOn { get; set; }
@@ -40,12 +41,7 @@ namespace ParserLib.Models
         public Point3D CenterPoint { get; set; }
         public Point3D StartPoint { get; set; }
 
-        private double strokeThickness = 1;
-
-
-
-
-
+        public Tuple<double, double, double, double> BoundingBox => new Tuple<double,double,double,double>(GeometryPath.Bounds.Left, GeometryPath.Bounds.Right, GeometryPath.Bounds.Bottom, GeometryPath.Bounds.Top);
 
         public void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
 

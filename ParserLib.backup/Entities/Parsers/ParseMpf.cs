@@ -37,7 +37,7 @@ namespace ParserLib.Services.Parsers
         }
 
 
-        private static List<string> ReadTextLinesAsync(string path, Encoding encoding)
+        private static async Task<List<string>> ReadTextLinesAsync(string path, Encoding encoding)
         {
             var fileTextContent = new List<string>();
             using (var fileStream = new FileStream(path,
@@ -47,7 +47,7 @@ namespace ParserLib.Services.Parsers
             encoding))
             {
                 string text;
-                while ((text = streamReader.ReadLine())
+                while ((text = await streamReader.ReadLineAsync())
                   != null)
                 {
                     fileTextContent.Add(text);
@@ -59,7 +59,7 @@ namespace ParserLib.Services.Parsers
         Dictionary<string, List<Tuple<int, string>>> _dicSubprograms;
 
 
-        public IProgramContext GetProgramContext()
+        public async Task<IProgramContext> GetProgramContext()
         {
             var programContext = new ProgramContext();
 
@@ -69,20 +69,21 @@ namespace ParserLib.Services.Parsers
             programContext.LastEntity = new LinearMove();
             programContext.LastEntity.EndPoint = new Point3D(0, 0, 0);
 
-            programContext.Moves = GetMoves(programContext);
+            programContext.Moves = await GetMoves(programContext);
 
             return programContext;
         }
 
 
-        private  List<Tuple<int, string>> ReadAndFilterLinesFromFile()
+        private async Task<List<Tuple<int, string>>> ReadAndFilterLinesFromFile()
         {
             List<Tuple<int, string>> lstMoves = new List<Tuple<int, string>>();
 
-
+            await Task.Run(async () =>
+            {
                 try
                 {
-                    var lines = ReadTextLinesAsync(Filename, System.Text.Encoding.Default);
+                    var lines = await ReadTextLinesAsync(Filename, System.Text.Encoding.Default);
 
                     //var lines = await WriteSafeReadAllLinesAsync(Filename);
 
@@ -271,15 +272,15 @@ namespace ParserLib.Services.Parsers
                 }
 
 
-           
+            });
 
             return lstMoves;
         }
 
 
-        private  IList<IBaseEntity> GetMoves(ProgramContext programContext=null)
+        private async Task<IList<IBaseEntity>> GetMoves(ProgramContext programContext=null)
         {
-            List<Tuple<int, string>> lstMoves = ReadAndFilterLinesFromFile();
+            List<Tuple<int, string>> lstMoves = await ReadAndFilterLinesFromFile();
 
             if (programContext == null)
             {
@@ -292,7 +293,7 @@ namespace ParserLib.Services.Parsers
                 programContext.LastEntity.EndPoint = new Point3D(0, 0, 0);
             }
 
-            IList<IBaseEntity> moves = GetMoves(programContext, lstMoves);
+            IList<IBaseEntity> moves = await GetMoves(programContext, lstMoves);
 
             foreach (var item in macroNotConverted)
             {
@@ -302,11 +303,12 @@ namespace ParserLib.Services.Parsers
             return moves;
         }
 
-        private IList<IBaseEntity> GetMoves(ProgramContext programContext, List<Tuple<int, string>> lstMoves)
+        private async Task<IList<IBaseEntity>> GetMoves(ProgramContext programContext, List<Tuple<int, string>> lstMoves)
         {
             var moves = new List<IBaseEntity>();
 
-
+            await Task.Run(async () =>
+            {
                 try
                 {
                     foreach (var t in lstMoves)
@@ -334,7 +336,7 @@ namespace ParserLib.Services.Parsers
                 {
                     Console.WriteLine("Error " + ex.Message);
                 }
-           
+            });
             
             return moves;
         }

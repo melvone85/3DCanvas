@@ -90,21 +90,55 @@ namespace ParserLib.Helpers
             hole.Normal = normalVector;
         }
 
+        //def buildSlot(C1, C2, N, r:int, resolution:int= 5) :
+        //#converet to numpy if necessary 
+        //C1,C2,N = Curves.convertToNpArray(C1, C2, N)
+        //if Curves.areCoincident([C1, C2, N]):
+        //    raise ValueError('All the 3 points must be different to each other!')
+        //#n normal 
+        //n = N-C2
+        //nVersor = n / np.linalg.norm(n)
+        //C1C2 = C1-C2
+        //C1C2Versor = C1C2 / np.linalg.norm(C1C2)
+        //p1 = C1C2Versor* r
+        //p2 = C1C2Versor* -r
+        //deg = int(90 / resolution)
+        //rad = deg* np.pi/180
+        //points =[]
+        //try :
+        //    for step in range(-resolution, resolution+1):
+        //        theta = rad* step
+        //        rotated = p1* np.cos(theta) + np.cross(nVersor, p1)* np.sin(theta)+  nVersor* (np.dot(nVersor, p1))*(1-np.cos(theta))
+        //        rotated += C1
+        //        points.append(rotated)
+        //    for step in range(-resolution, resolution+1) :
+        //        theta = rad* step
+        //        rotated = p2* np.cos(theta) + np.cross(nVersor, p2)* np.sin(theta)+  nVersor* (np.dot(nVersor, p2))*(1-np.cos(theta))
+        //        rotated += C2
+        //        points.append(rotated)
+        //    points.append(points[0])
+        //except TypeError as e:
+        //    print(e)
+        //return points
+
         public static void GetMovesFromMacroSlot(ref SlotMove slot)
         {
             var c1C2Vector = Point3D.Subtract(slot.Arc1.CenterPoint, slot.Arc2.CenterPoint);
-
+            
             var c2C1Vector = Point3D.Subtract(slot.Arc2.CenterPoint, slot.Arc1.CenterPoint);
             c2C1Vector.Normalize();
 
-            slot.Arc1.NormalPoint = Point3D.Add(slot.Arc2.NormalPoint, c1C2Vector);
+            slot.Arc1.NormalPoint = Point3D.Add(slot.Arc2.NormalPoint, c1C2Vector); ;
             c1C2Vector.Normalize();
+   
 
             var normalVectorC1 = Point3D.Subtract(slot.Arc1.CenterPoint, slot.Arc1.NormalPoint);
             normalVectorC1.Normalize();
 
             var normalVectorC2 = Point3D.Subtract(slot.Arc2.CenterPoint, slot.Arc2.NormalPoint);
             normalVectorC2.Normalize();
+
+
 
             var cAVersor = Vector3D.CrossProduct(normalVectorC1, c2C1Vector);
             cAVersor.Normalize();
@@ -115,7 +149,7 @@ namespace ParserLib.Helpers
             var cBVector = cAVersor * -slot.Arc1.Radius;
             var arc1EndPoint = slot.Arc1.CenterPoint + cBVector;
 
-            var arc1ViaPoint = Point3D.Add(slot.Arc1.CenterPoint, c2C1Vector * -slot.Arc1.Radius);
+            var arc1ViaPoint =Point3D.Add(slot.Arc1.CenterPoint, c2C1Vector * -slot.Arc1.Radius);
 
             var cCVersor = Vector3D.CrossProduct(normalVectorC2, c1C2Vector);
             cCVersor.Normalize();
@@ -148,7 +182,7 @@ namespace ParserLib.Helpers
         public static void GetMovesFromMacroPoly(ref PolyMoves poly)
         {
             //calcolo di quanti gradi devo ruotare il primo segmento
-            double alpha = 2 * Math.PI / poly.Sides;
+            double alpha = 2*Math.PI / poly.Sides;
 
             //la normale della poly è presa rispetto al vertice, 
 
@@ -166,12 +200,12 @@ namespace ParserLib.Helpers
 
             // calcolo i nuovi vettori
 
-            var vertices = new Point3D[poly.Sides + 1];
+            var vertices = new Point3D[poly.Sides+1];
 
             var angle = 0.0;
             for (int i = 0; i < poly.Sides; i++)
             {
-                angle = alpha * i;
+                angle=alpha * i;
                 var rotatedVector = centerVertexVector * Math.Cos(angle) + Vector3D.CrossProduct(normalVector, centerVertexVector) * Math.Sin(angle) + normalVector * (Vector3D.DotProduct(normalVector, centerVertexVector) * (1 - Math.Cos(angle)));
                 var newVertex = Point3D.Add(poly.CenterPoint, rotatedVector);
                 vertices[i] = newVertex;
@@ -180,101 +214,21 @@ namespace ParserLib.Helpers
             vertices[poly.Sides] = poly.VertexPoint; // puoi controllare che stia funzionando bene verificando che  poly.Vertices[0] == poly.VertexPoint;
 
             poly.Lines = new List<Interfaces.ILine>();
+            
 
             for (int i = 0; i < poly.Sides; i++)
             {
                 poly.Lines.Add(
-                    new LinearMove()
-                    {
-                        StartPoint = vertices[i],
+                    new LinearMove() {
+                        
+                        StartPoint = vertices[i], 
                         EndPoint = vertices[i + 1],
                         SourceLine = poly.SourceLine,
                         IsBeamOn = poly.IsBeamOn,
                         LineColor = poly.LineColor,
                         OriginalLine = poly.OriginalLine,
-                    });
+                    }); 
             }
-        }
-
-        public static void GetMovesFromMacroRect(ref RectMoves rect)
-        {
-            var cv1 = Point3D.Subtract(rect.CenterPoint, rect.VertexPoint);
-            cv1.Normalize();
-            var d1 = Point3D.Subtract(rect.SidePoint, rect.VertexPoint);
-            d1.Normalize();
-
-
-            var alpha = Math.Acos(Vector3D.DotProduct(d1, cv1));
-
-            var normal = Vector3D.CrossProduct(cv1, d1);
-
-            var d2 = Vector3D.CrossProduct(d1, normal);
-            d2.Normalize();
-
-            var modCV1 = Point3D.Subtract(rect.CenterPoint, rect.VertexPoint).Length;
-
-            var l1 = modCV1 * Math.Cos(alpha);
-            var l2 = modCV1 * Math.Sin(alpha);
-
-            //var mAB = Point3D.Subtract(rect.CenterPoint, (d2 * l2));
-            //var mBC = Point3D.Add(rect.CenterPoint, (d1 * l1));
-            //var mCD = Point3D.Add(rect.CenterPoint, (d2 * l2));
-            //var mDA = Point3D.Subtract(rect.CenterPoint, (d1 * l1));
-
-            var vA = rect.VertexPoint;
-            var vB = Point3D.Add(vA, (2 * l1 * d1));
-            var vC = Point3D.Add(vB, (2 * l2 * d2));
-            var vD = Point3D.Add(vC, (-2 * l1 * d1));
-
-            rect.Lines = new List<Interfaces.ILine>();
-
-            rect.Lines.Add(
-            new LinearMove()
-            {
-                StartPoint = vA,
-                EndPoint = vB,
-                SourceLine = rect.SourceLine,
-                IsBeamOn = rect.IsBeamOn,
-                LineColor = rect.LineColor,
-                OriginalLine = rect.OriginalLine,
-            });
-            rect.Lines.Add(
-            new LinearMove()
-            {
-                StartPoint = vB,
-                EndPoint = vC,
-                SourceLine = rect.SourceLine,
-                IsBeamOn = rect.IsBeamOn,
-                LineColor = rect.LineColor,
-                OriginalLine = rect.OriginalLine,
-            });
-
-            rect.Lines.Add(
-            new LinearMove()
-            {
-                StartPoint = vC,
-                EndPoint = vD,
-                SourceLine = rect.SourceLine,
-                IsBeamOn = rect.IsBeamOn,
-                LineColor = rect.LineColor,
-                OriginalLine = rect.OriginalLine,
-            });
-
-            rect.Lines.Add(
-            new LinearMove()
-            {
-                StartPoint = vD,
-                EndPoint = vA,
-                SourceLine = rect.SourceLine,
-                IsBeamOn = rect.IsBeamOn,
-                LineColor = rect.LineColor,
-                OriginalLine = rect.OriginalLine,
-            }
-            );
-
-
-
-
         }
 
         public static class StringToFormula
