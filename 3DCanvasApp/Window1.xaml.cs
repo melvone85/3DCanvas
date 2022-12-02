@@ -472,9 +472,9 @@ namespace Canvas3DViewer
                 case ELineType.CutLine3:
                     return Brushes.Red;
                 case ELineType.CutLine4:
-                    return Brushes.Azure;
-                case ELineType.CutLine5:
                     return Brushes.Violet;
+                case ELineType.CutLine5:
+                    return Brushes.Aqua;
                 case ELineType.Marking:
                     return Brushes.Yellow;
                 case ELineType.Microwelding:
