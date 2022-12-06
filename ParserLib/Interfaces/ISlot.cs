@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ParserLib.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,7 +11,7 @@ namespace ParserLib.Interfaces
     {
         IArc Arc1 { get; set; }
         IArc Arc2 { get; set; }
-        ILine Line1 { get; set; }
-        ILine Line2 { get; set; }
+        Entity Line1 { get; set; }
+        Entity Line2 { get; set; }
     }
 }

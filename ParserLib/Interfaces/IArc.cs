@@ -21,6 +21,7 @@ namespace ParserLib.Interfaces
         bool IsStroked { get; set; }
         bool IsRotating { get; set; }
 
+        
         //void RedrawArc();
     }
 }

@@ -9,9 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.Caching;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -28,7 +26,6 @@ namespace Canvas3DViewer
     /// </summary>
     public partial class Window1 : Window
     {
-        public int dbgCnt = 0;
         List<IBaseEntity> moves;
         public string Filename { get; set; }
 
@@ -50,35 +47,17 @@ namespace Canvas3DViewer
             //this.DataContext = new CncFilesViewModel();
         }
 
-        private ObjectCache cache = MemoryCache.Default;
-        public List<T> GetCachedDataList<T>(string key)
-        {
-            List<T> result = null;
-            if (cache.Contains(key))
-                result = cache[key] as List<T>;
-
-            foreach (var item in cache)
-            {
-                Console.WriteLine("cache object key-value: " + item.Key + "-" + item.Value);
-            }
-
-
-
-            return result;
-        }
-
-
         private void DrawProgram(string fullName)
         {
-            List<ParseIso> data = GetCachedDataList<ParseIso>("ParseIso") as List<ParseIso>;
-
-
 
             Stopwatch st = new Stopwatch();
+            Stopwatch ost = new Stopwatch();
+
             st.Start();
 
             try
             {
+                ost.Start();
                 Parser parser = null;
 
                 if ((this.DataContext as CncFilesViewModel).SelectedExtensionFile == "*.iso")
@@ -88,6 +67,10 @@ namespace Canvas3DViewer
 
                 var programContext = parser.GetProgramContext();
                 moves = (List<IBaseEntity>)programContext.Moves;
+                ost.Stop();
+                Console.WriteLine($"Time to obtain moves of: {System.IO.Path.GetFileName(fullName)} is {ost.ElapsedMilliseconds}ms");
+
+
 
                 if (moves == null) return;
 
@@ -247,127 +230,6 @@ namespace Canvas3DViewer
             return $"{s} X:{Math.Round(p.X, 3)} Y:{Math.Round(p.Y, 3)} Z:{Math.Round(p.Z, 3)}";
         }
 
-        //private void InitialTransform()
-        //{
-
-
-        //    ////////////////////////////////////////////////////////////////////////////////////
-        //    //// ORIENTAMENTO VISUALIZZAZIONE (AL MOMENTO DIREZIONE Z- DALL'ALTO)
-
-
-        //    Matrix3D U = Matrix3D.Identity;
-        //    Matrix3D Un = Matrix3D.Identity;
-        //    Point3D cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
-
-        //    U.RotateAt(new Quaternion(new Vector3D(1, 0, 0), 180), cor);
-        //    Un.RotateAt(new Quaternion(new Vector3D(1, 0, 0), 180), new Point3D(0, 0, 0));
-
-
-        //    foreach (var item in moves)
-        //    {
-        //        item.Render(U, Un, false, 1);
-        //    }
-
-        //    //// shift al centro del canvas
-
-        //    double xMin = double.PositiveInfinity;
-        //    double xMax = double.NegativeInfinity;
-        //    double yMin = double.PositiveInfinity;
-        //    double yMax = double.NegativeInfinity;
-
-
-
-        //    foreach (var item in moves)
-        //    {
-        //        var entity = item as IEntity;
-        //        if (!item.IsBeamOn) { continue; }
-        //        if ((item is ArcMove) == false && item.Is2DProgram == false)
-        //        {
-        //            continue;
-        //        }
-
-        //        xMin = Math.Min(entity.BoundingBox.Item1, xMin);
-        //        xMax = Math.Max(entity.BoundingBox.Item2, xMax);
-        //        yMin = Math.Min(entity.BoundingBox.Item3, yMin);
-        //        yMax = Math.Max(entity.BoundingBox.Item4, yMax);
-        //    }
-
-        //    double xMed = (xMax + xMin) / 2;
-        //    double yMed = (yMax + yMin) / 2;
-
-        //    double yMedCanvas = canvas1.ActualHeight / 2;
-        //    double xMedCanvas = canvas1.ActualWidth / 2;
-
-        //    U.SetIdentity();
-        //    Un.SetIdentity();
-
-        //    U.OffsetX = xMedCanvas - xMed;
-        //    U.OffsetY = yMedCanvas - yMed;
-
-        //    cor = U.Transform(cor);
-
-        //    centerRotation.X = yMedCanvas;
-        //    centerRotation.Y = xMedCanvas;
-        //    centerRotation.Z = cor.Z;
-
-        //    cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
-
-
-        //    foreach (var item in moves)
-        //    {
-        //        item.Render(U, Un, false, 1);
-        //    }
-
-
-        //    ////////////////////////////////////////////////////////////////////////////////////
-        //    /// ZOOM FIT CANVAS
-
-        //    U.SetIdentity();
-        //    Un.SetIdentity();
-
-        //    double dX = xMax - xMin;
-        //    double dY = yMax - yMin;
-        //    double margin = 50;
-
-
-        //    //if (dX > dY)
-        //    //{
-        //    //    double Z = (canvas1.ActualWidth - margin) / dX;
-
-        //    //    U.ScaleAt(new Vector3D(Z, Z, Z), cor);
-
-        //    //    foreach (var item in moves)
-        //    //    {
-        //    //        item.Render(U, Un, false, Z);
-        //    //    }
-        //    //}
-        //    //else
-        //    //{
-        //    //    double Z = (canvas1.ActualHeight - margin) / dY;
-
-        //    //    U.ScaleAt(new Vector3D(Z, Z, Z), cor);
-
-        //    //    foreach (var item in moves)
-        //    //    {
-        //    //        item.Render(U, Un, false, Z);
-        //    //    }
-
-        //    //}
-
-        //    double newZ = (dX > dY) ? (canvas1.ActualWidth - margin) / dX : (canvas1.ActualHeight - margin) / dY;
-
-        //    //double Z = (canvas1.ActualWidth - margin) / divisionFactorZ;
-
-        //    U.ScaleAt(new Vector3D(newZ, newZ, newZ), cor);
-
-        //    foreach (var item in moves)
-        //    {
-        //        item.Render(U, Un, false, newZ);
-        //    }
-
-
-        //}
-
         private void InitialTransform()
         {
             #region Top View of the drawing
@@ -394,11 +256,11 @@ namespace Canvas3DViewer
             foreach (var item in moves)
             {
                 if (!item.IsBeamOn) { continue; }
-
+                //if (!(item is ArcMove) ) { continue; }
                 var entity = (item as IEntity);
-                if (double.IsInfinity(entity.BoundingBox.Item1) || double.IsInfinity(entity.BoundingBox.Item2) || double.IsInfinity(entity.BoundingBox.Item3) || double.IsInfinity(entity.BoundingBox.Item4))
+                if (double.IsNegativeInfinity(entity.BoundingBox.Item1) || double.IsInfinity(entity.BoundingBox.Item2) || double.IsNegativeInfinity(entity.BoundingBox.Item3) || double.IsInfinity(entity.BoundingBox.Item4))
                     continue;
-                //if ((item is ArcMove) == false && item.Is2DProgram == false)
+                //if ((item is ArcMove) == false && (item.Is2DProgram) == false)
                 //{
                 //    continue;
                 //}

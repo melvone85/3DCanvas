@@ -56,7 +56,7 @@ namespace ParserLib.Models
         } 
 
         public Point3D VertexPoint { get; set; }
-        public List<ILine> Lines { get; set; }
+        public List<Entity> Lines { get; set; }
 
         public void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {

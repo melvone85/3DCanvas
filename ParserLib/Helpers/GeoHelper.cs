@@ -10,24 +10,36 @@ namespace ParserLib.Helpers
 {
     public static class GeoHelper
     {
+        public static double GetRadiusForCircularMove(Point3D A, Point3D B, Point3D C, out double CB, out double CA, out double AB)
+        {
+            //segments
+            CB = Point3D.Subtract(C, B).Length;
+            CA = Point3D.Subtract(C, A).Length;
+            AB = Point3D.Subtract(A, B).Length;
+
+            //circumradius
+            double s = (CB + CA + AB) / 2;
+            return CB * CA * AB / 4 / Math.Sqrt(s * (s - CB) * (s - CA) * (s - AB));
+
+        }
+
+
         public static void AddCircularMoveProperties(ref ArcMove move)
         {
             var A = move.StartPoint;
             var B = move.ViaPoint;
             var C = move.EndPoint;
 
-            //segments
-            double CB = Point3D.Subtract(C, B).Length;
-            double CA = Point3D.Subtract(C, A).Length;
-            double AB = Point3D.Subtract(A, B).Length;
-
-            //circumradius
-            double s = (CB + CA + AB) / 2;
-            double r = CB * CA * AB / 4 / Math.Sqrt(s * (s - CB) * (s - CA) * (s - AB));
+            double r = GetRadiusForCircularMove(A, B, C, out double CB, out double CA, out double AB);
 
             move.Radius = r;
+
             if (double.IsInfinity(r))
-                move.Radius = 1000;
+            {
+                //Radius impossible it's a linear
+                move.Radius = 100000;
+                return;
+            }
 
             //Circumcenter
             double b1 = GetCircumPoint(CB, CA, AB);
@@ -179,7 +191,7 @@ namespace ParserLib.Helpers
             // aggiungo in coda ai vertici il primo vertice
             vertices[poly.Sides] = poly.VertexPoint; // puoi controllare che stia funzionando bene verificando che  poly.Vertices[0] == poly.VertexPoint;
 
-            poly.Lines = new List<Interfaces.ILine>();
+            poly.Lines = new List<Entity>();
 
             for (int i = 0; i < poly.Sides; i++)
             {
@@ -226,7 +238,7 @@ namespace ParserLib.Helpers
             var vC = Point3D.Add(vB, (2 * l2 * d2));
             var vD = Point3D.Add(vC, (-2 * l1 * d1));
 
-            rect.Lines = new List<Interfaces.ILine>();
+            rect.Lines = new List<Entity>();
 
             rect.Lines.Add(
             new LinearMove()

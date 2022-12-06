@@ -6,8 +6,9 @@ namespace ParserLib.Interfaces
 {
     public interface IEntity:IBaseEntity
     {
-        Point3D StartPoint { get; set; }
         Point3D EndPoint { get; set; }
+        Point3D StartPoint { get; set; }
+        
         PathGeometry GeometryPath { get; set; }
 
         Tuple<double, double, double, double> BoundingBox { get; }

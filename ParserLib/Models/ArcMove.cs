@@ -7,46 +7,36 @@ using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Models
 {
-    public class ArcMove : ViewModelBase, IArc
+    public class ArcMove : Entity, IArc
     {
         private double degreeToRad = Math.PI / 180;
         private Vector VectorForRotationAngleCalculation = new Vector(1, 0);
         private Vector3D vpn = new Vector3D(0, 0, 1);
         private double strokeThickness = 1;
-
-
-        public bool Is2DProgram { get; set; }
-        public Point3D EndPoint { get; set; }
         public Point3D ViaPoint { get; set; }
         public Size ArcSize { get; set; }
         public double RotationAngle { get; set; }
         public SweepDirection ArcSweepDirection { get; set; }
         public bool IsLargeArc { get; set; }
 
-        public ELineType LineColor { get; set; }
-        public EEntityType EntityType { get => EEntityType.Arc; }
-        public int SourceLine { get; set; }
-
-        public string OriginalLine { get; set; }
+        public override EEntityType EntityType { get => EEntityType.Arc; }
 
         public bool IsStroked { get; set; }
-        public bool IsBeamOn { get; set; }
+
         public bool IsRotating { get; set; }
+
         public double Radius { get; set; }// raggio della circonferenza a cui appartiene l'arco di circonferenza
+
         public Vector3D Normal { get; set; }// vettore normale al piano su cui giace l'arco di circonferenze
 
-
-        public PathGeometry GeometryPath { get; set; }
         public Point3D NormalPoint { get; set; }
+
         public Point3D CenterPoint { get; set; }
-        public Point3D StartPoint { get; set; }
 
-        public Tuple<double, double, double, double> BoundingBox => new Tuple<double,double,double,double>(GeometryPath.Bounds.Left, GeometryPath.Bounds.Right, GeometryPath.Bounds.Bottom, GeometryPath.Bounds.Top);
+        public override Tuple<double, double, double, double> BoundingBox => new Tuple<double,double,double,double>(GeometryPath.Bounds.Left, GeometryPath.Bounds.Right, GeometryPath.Bounds.Bottom, GeometryPath.Bounds.Top);
 
-        public void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
-
+        public override void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {
-
             Normal = Un.Transform(Normal);
             Normal = Vector3D.Multiply(1 / Normal.Length, Normal);
 
@@ -66,8 +56,6 @@ namespace ParserLib.Models
 
             if (e < strokeThickness / 2)
             {
-
-
                 Point3D StartPointDump = StartPoint;
                 Point3D EndPointDump = EndPoint;
                 bool IsLargeDump = IsLargeArc;
@@ -176,38 +164,9 @@ namespace ParserLib.Models
 
         }
 
-
-
-
-
-
-
-
-
-
-
-
-        //public void RedrawArc()
-        //{
-        //    var angleBetweenNormalAndViewPlaneNormal = Vector3D.AngleBetween(vpn, Normal);
-
-        //    if (!(Math.Abs(angleBetweenNormalAndViewPlaneNormal - 90) < _ortotolerance) || !IsRotating)
-        //    {
-        //        Vector3D intersection = Vector3D.CrossProduct(vpn, Normal);
-        //        RotationAngle = -Vector.AngleBetween(new Vector(intersection.X, intersection.Y), VectorForRotationAngleCalculation);
-        //        ArcSize = new Size(Radius, Math.Abs(Radius * Math.Cos(angleBetweenNormalAndViewPlaneNormal * degreeToRad)));
-        //        ArcSweepDirection = Normal.Z >= 0 ? SweepDirection.Clockwise : SweepDirection.Counterclockwise;
-        //    }
-        //    else 
-        //    {
-        //        //TODO cercare di capire perchè in alcuni casi la normale dell'arco è perpendicolare alla vista e il cerchio scompare
-        //        //suggerimenti il cerchio/arco diventa una linea e potrebbe essere anche un arco con raggio infinito.
-        //        Vector3D intersection = Vector3D.CrossProduct(new Vector3D(0.001,0.001,1), Normal);
-        //        RotationAngle = -Vector.AngleBetween(new Vector(intersection.X, intersection.Y), VectorForRotationAngleCalculation);
-        //        ArcSize = new Size(Radius, Math.Abs(Radius * Math.Cos(angleBetweenNormalAndViewPlaneNormal * degreeToRad)));
-        //        ArcSweepDirection = Normal.Z >= 0 ? SweepDirection.Clockwise : SweepDirection.Counterclockwise;
-
-        //    }
-        //}
+        public override string ToString()
+        {
+            return $"Arc sp: {StartPoint} vp: {ViaPoint} ep: {EndPoint}"; 
+        }
     }
 }

@@ -20,7 +20,7 @@ namespace ParserLib.Models
         public Point3D SidePoint { get;set; }
         public Point3D CenterPoint { get;set; }
         public Point3D VertexPoint { get;set; }
-        public List<ILine> Lines { get;set; }
+        public List<Entity> Lines { get;set; }
         public Point3D StartPoint { get;set; }
         public Point3D EndPoint { get;set; }
         public PathGeometry GeometryPath { get;set; }

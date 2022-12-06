@@ -9,12 +9,18 @@ namespace ParserLib.Models
 {
     public class ProgramContext : IProgramContext
     {
-        private double xMin { get; set; }
-        private double xMax { get; set; }
-        private double yMin { get; set; }
-        private double yMax { get; set; }
-        private double zMin { get; set; }
-        private double zMax { get; set; }
+        public double xMin { get; set; } =double.PositiveInfinity;
+        public double xMax { get; set; } =double.NegativeInfinity;
+        public double yMin { get; set; } =double.PositiveInfinity;
+        public double yMax { get; set; } =double.NegativeInfinity;
+        public double zMin { get; set; } =double.PositiveInfinity;
+        public double zMax { get; set; } = double.NegativeInfinity;
+
+        public ProgramContext()
+        {
+
+        }
+
         public IEntity ReferenceMove { get; set; }
         public IEntity LastEntity { get; set; }
         public ELineType ContourLineType { get; set; }

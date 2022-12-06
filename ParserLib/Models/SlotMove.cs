@@ -19,8 +19,8 @@ namespace ParserLib.Models
 
         public IArc Arc1 { get;set; }
         public IArc Arc2 { get;set; }
-        public ILine Line1 { get;set; }
-        public ILine Line2 { get;set; }
+        public Entity Line1 { get;set; }
+        public Entity Line2 { get;set; }
         public TechnoHelper.ELineType LineColor { get;set; }
 
         public TechnoHelper.EEntityType EntityType => TechnoHelper.EEntityType.Slot;
