@@ -238,7 +238,7 @@ namespace ParserLib.Helpers
             var vC = Point3D.Add(vB, (2 * l2 * d2));
             var vD = Point3D.Add(vC, (-2 * l1 * d1));
 
-            rect.Lines = new List<Entity>();
+            rect.Lines = new List<LinearMove>();
 
             rect.Lines.Add(
             new LinearMove()
@@ -250,16 +250,17 @@ namespace ParserLib.Helpers
                 LineColor = rect.LineColor,
                 OriginalLine = rect.OriginalLine,
             });
-            rect.Lines.Add(
-            new LinearMove()
+
+            rect.Lines.Add(new LinearMove()
             {
                 StartPoint = vB,
                 EndPoint = vC,
                 SourceLine = rect.SourceLine,
                 IsBeamOn = rect.IsBeamOn,
                 LineColor = rect.LineColor,
-                OriginalLine = rect.OriginalLine,
-            });
+                OriginalLine = rect.OriginalLine
+            }
+            );
 
             rect.Lines.Add(
             new LinearMove()

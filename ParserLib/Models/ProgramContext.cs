@@ -9,21 +9,24 @@ namespace ParserLib.Models
 {
     public class ProgramContext : IProgramContext
     {
-        public double xMin { get; set; } =double.PositiveInfinity;
-        public double xMax { get; set; } =double.NegativeInfinity;
-        public double yMin { get; set; } =double.PositiveInfinity;
-        public double yMax { get; set; } =double.NegativeInfinity;
-        public double zMin { get; set; } =double.PositiveInfinity;
-        public double zMax { get; set; } = double.NegativeInfinity;
-
         public ProgramContext()
         {
 
         }
 
+        public double xMin { get; set; } = double.PositiveInfinity;
+        public double xMax { get; set; } = double.NegativeInfinity;
+        public double yMin { get; set; } = double.PositiveInfinity;
+        public double yMax { get; set; } = double.NegativeInfinity;
+        public double zMin { get; set; } = double.PositiveInfinity;
+        public double zMax { get; set; } = double.NegativeInfinity;
+
+
+
         public IEntity ReferenceMove { get; set; }
         public IEntity LastEntity { get; set; }
         public ELineType ContourLineType { get; set; }
+        public Point3D LastHeadPosition { get; set; }
 
         public Point3D CenterRotationPoint { get; set; }
 
@@ -39,13 +42,24 @@ namespace ParserLib.Models
         public bool IsWeldProgram { get; set; }
         public IList<IBaseEntity> Moves { get; set; }
 
-        public void UpdateProgramCenterPoint() {
-            if (LastEntity != null && IsBeamOn) {
+        public void UpdateProgramCenterPoint()
+        {
+            if (LastEntity != null && IsBeamOn)
+            {
                 if (LastEntity.EntityType == EEntityType.Poly)
                 {
                     var poly = LastEntity as IPoly;
 
                     foreach (var item in poly.Lines)
+                    {
+                        CalculateMinMaxFromBaseEntity(item);
+                    }
+                }
+                else if (LastEntity.EntityType == EEntityType.Rect)
+                {
+                    var rect = LastEntity as RectMoves;
+
+                    foreach (var item in rect.Lines)
                     {
                         CalculateMinMaxFromBaseEntity(item);
                     }

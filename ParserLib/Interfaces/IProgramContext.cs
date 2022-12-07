@@ -10,6 +10,8 @@ namespace ParserLib.Interfaces
         IEntity ReferenceMove { get; set; }
         IEntity LastEntity { get; set; }
         Point3D CenterRotationPoint { get; set; }
+        Point3D LastHeadPosition { get; set; }
+
         bool Is3DProgram { get; set; }
         bool Is2DProgram { get; set; }
         bool IsTubeProgram { get; set; }

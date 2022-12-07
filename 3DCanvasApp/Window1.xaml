@@ -6,7 +6,7 @@
         xmlns:gl="clr-namespace:System.Globalization;assembly=mscorlib"
         xmlns:local="clr-namespace:Canvas3DViewer" xmlns:conv="clr-namespace:Canvas3DViewer.Converters"
         mc:Ignorable="d"
-        Title="Window1" Height="450" Width="800" FontFamily="Comfortaa" Loaded="Window_Loaded">
+        Title="Window1" Height="450" Width="800" FontFamily="Comfortaa">
     <Window.Resources>
         <!--Control colors.-->
         <conv:FontWeightConverter x:Key="FontWeightConverter" />

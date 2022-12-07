@@ -41,13 +41,21 @@ namespace ParserLib.Services.Parsers
 
         public IProgramContext GetProgramContext()
         {
-            var programContext = new ProgramContext();
+            var programContext = new ProgramContext
+            {
+                ReferenceMove = new LinearMove
+                {
+                    EndPoint = new Point3D(0, 0, 0)// programContext.ReferenceMove != null ? new Point3D(programContext.ReferenceMove.EndPoint.X, programContext.ReferenceMove.EndPoint.Y, programContext.ReferenceMove.EndPoint.Z) : new Point3D(0, 0, 0);
+                },
 
-            programContext.ReferenceMove = new LinearMove();
-            programContext.ReferenceMove.EndPoint = new Point3D(0, 0, 0);// programContext.ReferenceMove != null ? new Point3D(programContext.ReferenceMove.EndPoint.X, programContext.ReferenceMove.EndPoint.Y, programContext.ReferenceMove.EndPoint.Z) : new Point3D(0, 0, 0);
+                LastEntity = new LinearMove
+                {
+                    EndPoint = new Point3D(0, 0, 0),
+                },
 
-            programContext.LastEntity = new LinearMove();
-            programContext.LastEntity.EndPoint = new Point3D(0, 0, 0);
+                LastHeadPosition = new Point3D(0, 0, 0)
+            };
+
 
             programContext.Moves = GetMoves(programContext);
 
@@ -57,9 +65,15 @@ namespace ParserLib.Services.Parsers
         private IList<IBaseEntity> GetMoves(ProgramContext programContext)
         {
             var lstMoves = ReadAndFilterLinesFromFile();
+            if (lstMoves == null)
+            {
 
+            }
             IList<IBaseEntity> moves = GetMoves(programContext, lstMoves);
-
+            if (moves == null) 
+            { 
+            
+            }
             return moves;
         }
 
@@ -87,154 +101,175 @@ namespace ParserLib.Services.Parsers
                 Parallel.ForEach(dic_LineNumber_Line.Keys, (key, state) =>
                 {
                     if (key > _programEndAtLine) return;
-                    var lineToClean = dic_LineNumber_Line[key];
-                    var lineNumber = key;
 
-                    if (lineToClean.StartsWith("$") == false
-                                || lineToClean.StartsWith("$(WORK_ON") || lineToClean.StartsWith("$(WORK_OFF") || lineToClean.StartsWith("$(WORK_TYPE)") || lineToClean.StartsWith("$(BEAM_ON")
-                                || lineToClean.StartsWith("$(BEAM_OFF") || lineToClean.StartsWith("$(HOLE)") || lineToClean.StartsWith("$(SLOT") || lineToClean.StartsWith("$(RECT")
-                                || lineToClean.StartsWith("$(CIRCLE") || lineToClean.StartsWith("$(KEYHOLE") || lineToClean.StartsWith("$(MARKING") || lineToClean.StartsWith("$(END_MARKING")
-                                || lineToClean.StartsWith("$(POLY") || lineToClean.StartsWith("$(SQUARE"))
+
+                    try
                     {
-                        var lineCleaned = CleanLine(lineToClean);
 
-                        if (lineCleaned.StartsWith("M30"))
+                        var lineToClean = dic_LineNumber_Line[key];
+                        var lineNumber = key;
+                        if (lineToClean.StartsWith("$") == false
+                                    || lineToClean.StartsWith("$(WORK_ON") || lineToClean.StartsWith("$(WORK_OFF") || lineToClean.StartsWith("$(WORK_TYPE)") || lineToClean.StartsWith("$(BEAM_ON")
+                                    || lineToClean.StartsWith("$(BEAM_OFF") || lineToClean.StartsWith("$(HOLE)") || lineToClean.StartsWith("$(SLOT") || lineToClean.StartsWith("$(RECT")
+                                    || lineToClean.StartsWith("$(CIRCLE") || lineToClean.StartsWith("$(KEYHOLE") || lineToClean.StartsWith("$(MARKING") || lineToClean.StartsWith("$(END_MARKING")
+                                    || lineToClean.StartsWith("$(POLY") || lineToClean.StartsWith("$(SQUARE"))
                         {
-                            dic.Add(lineNumber, lineCleaned);
-                            state.Break();
-                            return;
-                        }
+                            var lineCleaned = CleanLine(lineToClean);
+                            
+                            if (lineCleaned.StartsWith("M30"))
+                            {
+                                //Console.WriteLine(lineCleaned);
+                                lock (dic)
+                                {
+                                    dic.Add(lineNumber, lineCleaned);
 
-                        #region SubProgram
-                        if (lineCleaned.StartsWith("Q"))
-                        {
-                            //Be Sure to take just the Q command and not comments or other stuff
-                            var q = GcodeAxesQuotaRegex.Match(lineCleaned).Value;
-                            dic.Add(lineNumber, q);
-                            return;
-                        }
-                        #endregion
+                                }
+                                state.Break();
+                                //return;
+                            }
 
-                        #region Handle GO
-                        if (lineCleaned.StartsWith("GO"))
-                        {
-                            //    //Is not reading label but if it was reset to it
-                            //    readingLabel = false;
-                            //    //Need to search the label xx in the GOxx
-                            //    jumpingIntoLabel = true;
+                            #region SubProgram
+                            if (lineCleaned.StartsWith("Q"))
+                            {
+                                //Be Sure to take just the Q command and not comments or other stuff
+                                var q = GcodeAxesQuotaRegex.Match(lineCleaned).Value;
+                                lock (dic)
+                                {
+                                    dic.Add(lineNumber, q);
+                                }
+                                return;
+                            }
+                            #endregion
+
+                            #region Handle GO
+                            if (lineCleaned.StartsWith("GO"))
+                            {
+                                //    //Is not reading label but if it was reset to it
+                                //    readingLabel = false;
+                                //    //Need to search the label xx in the GOxx
+                                //    jumpingIntoLabel = true;
 
 
-                            //    lineCleaned = lineCleaned.Replace(" ", "");
+                                //    lineCleaned = lineCleaned.Replace(" ", "");
 
-                            //    //Take just the integer part
-                            //    searchingForLabel = int.Parse(Regex.Match(lineCleaned, @"\d+").Value);
+                                //    //Take just the integer part
+                                //    searchingForLabel = int.Parse(Regex.Match(lineCleaned, @"\d+").Value);
 
-                            //    //If the label operations are already present in the dictionary then print it. Better to not enter here
-                            //    //Because I have to set that the file reading index is at the end of this foreach
-                            //    if (dicOperationsInLabel.ContainsKey(searchingForLabel))
-                            //    {
-                            //        var lst = dicOperationsInLabel[searchingForLabel];
-                            //        foreach (var item in lst)
-                            //        {
-                            //            lock (dic)
-                            //            {
-                            //                dic.Add(lineNumber, lineCleaned);
-                            //            }
+                                //    //If the label operations are already present in the dictionary then print it. Better to not enter here
+                                //    //Because I have to set that the file reading index is at the end of this foreach
+                                //    if (dicOperationsInLabel.ContainsKey(searchingForLabel))
+                                //    {
+                                //        var lst = dicOperationsInLabel[searchingForLabel];
+                                //        foreach (var item in lst)
+                                //        {
+                                //            lock (dic)
+                                //            {
+                                //                dic.Add(lineNumber, lineCleaned);
+                                //            }
 
-                            //        }
-                            //    }
+                                //        }
+                                //    }
 
-                            //    //Get the next line
+                                //    //Get the next line
+                                //    return;
+                                //}
+
+                                //if (lineCleaned.StartsWith("N") && lineCleaned.Contains("P200=") == false)
+                                //{
+                                //    readingLabel = true;
+                                //    lineCleaned = lineCleaned.Replace(" ", "");
+
+                                //    var labelFounded = int.Parse(Regex.Match(lineCleaned, @"\d+").Value);
+
+                                //    //If is searching for a label from GOXX and this is the label searched then
+                                //    //Stop searching.
+                                //    if (searchingForLabel == int.Parse(Regex.Match(lineCleaned, @"\d+").Value))
+                                //    {
+                                //        jumpingIntoLabel = false;
+                                //    }
+
+                                //    if (lstLabelOperations.Count > 0)
+                                //        lstLabelOperations = new List<string>();
+
+                                //    if (dicOperationsInLabel.ContainsKey(labelFounded) == false)
+                                //    {
+                                //        lock (dicOperationsInLabel)
+                                //        {
+                                //            dicOperationsInLabel.Add(labelFounded, lstLabelOperations);
+                                //        }
+                                //    }
+
+
+                                //    return;
+                            }
+
+                            //if (jumpingIntoLabel)
+                            //{
                             //    return;
                             //}
 
-                            //if (lineCleaned.StartsWith("N") && lineCleaned.Contains("P200=") == false)
+                            //if (readingLabel)
                             //{
-                            //    readingLabel = true;
-                            //    lineCleaned = lineCleaned.Replace(" ", "");
-
-                            //    var labelFounded = int.Parse(Regex.Match(lineCleaned, @"\d+").Value);
-
-                            //    //If is searching for a label from GOXX and this is the label searched then
-                            //    //Stop searching.
-                            //    if (searchingForLabel == int.Parse(Regex.Match(lineCleaned, @"\d+").Value))
+                            //    lock (lstLabelOperations)
                             //    {
-                            //        jumpingIntoLabel = false;
+                            //        lstLabelOperations.Add(lineCleaned);
                             //    }
+                            //}
+                            #endregion
 
-                            //    if (lstLabelOperations.Count > 0)
-                            //        lstLabelOperations = new List<string>();
-
-                            //    if (dicOperationsInLabel.ContainsKey(labelFounded) == false)
-                            //    {
-                            //        lock (dicOperationsInLabel)
-                            //        {
-                            //            dicOperationsInLabel.Add(labelFounded, lstLabelOperations);
-                            //        }
-                            //    }
-
-
-                            //    return;
-                        }
-
-                        //if (jumpingIntoLabel)
-                        //{
-                        //    return;
-                        //}
-
-                        //if (readingLabel)
-                        //{
-                        //    lock (lstLabelOperations)
-                        //    {
-                        //        lstLabelOperations.Add(lineCleaned);
-                        //    }
-                        //}
-                        #endregion
-
-                        #region Handle Variables
-                        if ((lineCleaned.StartsWith("P") || lineCleaned.StartsWith("LV")) && lineCleaned.Contains("=") && lineCleaned.Contains("$S25") == false)
-                        {
-                            lineCleaned = lineCleaned.Replace(" =", "=").Replace("= ", "=").Replace(" = ", "=");
-                            MatchCollection m = VariableDeclarationRegex.Matches(lineCleaned);
-
-                            foreach (var item in m)
+                            #region Handle Variables
+                            if ((lineCleaned.StartsWith("P") || lineCleaned.StartsWith("LV")) && lineCleaned.Contains("=") && lineCleaned.Contains("$S25") == false)
                             {
-                                var varDeclaration = item.ToString().Split(new string[] { "=" }, StringSplitOptions.RemoveEmptyEntries);
-                                double.TryParse(varDeclaration[1].Trim(), out double val);
-                                if (dicVariables.ContainsKey(varDeclaration[0].Trim()) == false && varDeclaration != null)
+                                lineCleaned = lineCleaned.Replace(" =", "=").Replace("= ", "=").Replace(" = ", "=");
+                                MatchCollection m = VariableDeclarationRegex.Matches(lineCleaned);
+
+                                foreach (var item in m)
                                 {
-                                    lock (dicVariables)
+                                    var varDeclaration = item.ToString().Split(new string[] { "=" }, StringSplitOptions.RemoveEmptyEntries);
+                                    double.TryParse(varDeclaration[1].Trim(), out double val);
+                                    if (dicVariables.ContainsKey(varDeclaration[0].Trim()) == false && varDeclaration != null)
                                     {
-                                        dicVariables.Add(varDeclaration[0].Trim(), val.ToString());
+                                        lock (dicVariables)
+                                        {
+                                            dicVariables.Add(varDeclaration[0].Trim(), val.ToString());
+                                        }
                                     }
                                 }
+
+                                return;
                             }
-
-                            return;
-                        }
-                        else if ((lineCleaned.StartsWith("P") || lineCleaned.StartsWith("LV")) && lineCleaned.Contains("$S25"))
-                        {
-                            return;
-                        }
-                        #endregion
-
-                        #region Handle line that use variables
-
-                        var varFounded1 = (Regex.Matches(lineCleaned, variableRegex));
-
-                        foreach (var item in varFounded1)
-                        {
-                            if (dicVariables.ContainsKey(item.ToString()))
+                            else if ((lineCleaned.StartsWith("P") || lineCleaned.StartsWith("LV")) && lineCleaned.Contains("$S25"))
                             {
-                                lineCleaned = lineCleaned.Replace(item.ToString(), dicVariables[item.ToString()]);
+                                return;
                             }
-                        }
-                        #endregion
+                            #endregion
 
-                        lock (dic)
-                        {
-                            dic.Add(lineNumber, lineCleaned);
+                            #region Handle line that use variables
+
+                            var varFounded1 = (Regex.Matches(lineCleaned, variableRegex));
+
+                            foreach (var item in varFounded1)
+                            {
+                                if (dicVariables.ContainsKey(item.ToString()))
+                                {
+                                    lineCleaned = lineCleaned.Replace(item.ToString(), dicVariables[item.ToString()]);
+                                }
+                            }
+                            #endregion
+
+                            lock (dic)
+                            {
+                                if (lineCleaned == "M30") return;
+                                dic.Add(lineNumber, lineCleaned);
+                            }
+
+
                         }
+                    }
+                    catch (Exception ex)
+                    {
+
+                        throw ex;
                     }
                 });
 
@@ -516,8 +551,8 @@ namespace ParserLib.Services.Parsers
                                 IBaseEntity subProgramEntity = null;
                                 ParseLine(ref programContext, moves, subLineString, ref subProgramEntity);
                             }
+                            continue;
                         }
-
                     }
 
                     IBaseEntity entity = null;
@@ -533,15 +568,15 @@ namespace ParserLib.Services.Parsers
             return moves;
         }
 
-        private void ParseLine(ref ProgramContext programContext, List<IBaseEntity> moves, string subLineString, ref IBaseEntity baseEntity)
+        private void ParseLine(ref ProgramContext programContext, List<IBaseEntity> moves, string lineString, ref IBaseEntity baseEntity)
         {
-            if (subLineString.StartsWith("$"))
+            if (lineString.StartsWith("$"))
             {
-                ParseMacro(subLineString, ref programContext, ref baseEntity);
+                ParseMacro(lineString, ref programContext, ref baseEntity);
             }
-            else if (subLineString.StartsWith("G"))
+            else if (lineString.StartsWith("G"))
             {
-                ParseGLine(subLineString, ref programContext, ref baseEntity);
+                ParseGLine(lineString, ref programContext, ref baseEntity);
             }
 
             if (baseEntity != null)
@@ -549,13 +584,16 @@ namespace ParserLib.Services.Parsers
                 baseEntity.Is2DProgram = programContext.Is2DProgram;
 
                 if (baseEntity.EntityType == EEntityType.Rect)
-                    programContext.LastEntity = (baseEntity as RectMoves).Lines.Last();
+                    programContext.LastHeadPosition = (baseEntity as RectMoves).Lines.Last().EndPoint;
                 else if (baseEntity.EntityType == EEntityType.Slot)
-                    programContext.LastEntity = (baseEntity as SlotMove).Line2;
+                    programContext.LastHeadPosition = (baseEntity as SlotMove).Line2.EndPoint;
                 else if (baseEntity.EntityType == EEntityType.Poly)
-                    programContext.LastEntity = (baseEntity as PolyMoves).Lines.Last();
+                    programContext.LastHeadPosition = (baseEntity as PolyMoves).Lines.Last().EndPoint;
                 else
-                    programContext.LastEntity = baseEntity as IEntity;
+                    programContext.LastHeadPosition = (baseEntity as Entity).EndPoint;
+
+
+                programContext.LastEntity = baseEntity as IEntity;
 
                 programContext.UpdateProgramCenterPoint();
                 moves.Add(baseEntity);
@@ -702,11 +740,11 @@ namespace ParserLib.Services.Parsers
 
             IEntity e = (entity as IEntity);
 
-            e.StartPoint = Create3DPoint(programContext, programContext.LastEntity.EndPoint);
+            e.StartPoint = Create3DPoint(programContext, programContext.LastHeadPosition);
 
             BuildMove(ref entity, regexMatches, programContext);
 
-            e.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, e.EndPoint, programContext.IsIncremental ? programContext.LastEntity.EndPoint : new Point3D(0, 0, 0)); //new Point3D(programContext.ReferenceMove.EndPoint.X + entity.EndPoint.X, programContext.ReferenceMove.EndPoint.Y + entity.EndPoint.Y, programContext.ReferenceMove.EndPoint.Z + entity.EndPoint.Z);
+            e.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, e.EndPoint, programContext.IsIncremental ? programContext.LastHeadPosition : new Point3D(0, 0, 0)); //new Point3D(programContext.ReferenceMove.EndPoint.X + entity.EndPoint.X, programContext.ReferenceMove.EndPoint.Y + entity.EndPoint.Y, programContext.ReferenceMove.EndPoint.Z + entity.EndPoint.Z);
 
             if (entity is ArcMove)
             {
@@ -992,7 +1030,7 @@ namespace ParserLib.Services.Parsers
 
                 entity = new LinearMove()
                 {
-                    StartPoint = programContext.LastEntity.StartPoint,
+                    StartPoint = programContext.LastHeadPosition,
                     EndPoint = new Point3D(X, Y, Z),
                     SourceLine = programContext.SourceLine,
                     IsBeamOn = false,

@@ -9,15 +9,16 @@ namespace ParserLib.Models
 {
     public class ArcMove : Entity, IArc
     {
+        public double RotationAngle { get; set; }
+        private double strokeThickness = 1;
         private double degreeToRad = Math.PI / 180;
+        public bool IsLargeArc { get; set; }
+
         private Vector VectorForRotationAngleCalculation = new Vector(1, 0);
         private Vector3D vpn = new Vector3D(0, 0, 1);
-        private double strokeThickness = 1;
         public Point3D ViaPoint { get; set; }
         public Size ArcSize { get; set; }
-        public double RotationAngle { get; set; }
         public SweepDirection ArcSweepDirection { get; set; }
-        public bool IsLargeArc { get; set; }
 
         public override EEntityType EntityType { get => EEntityType.Arc; }
 
@@ -32,8 +33,6 @@ namespace ParserLib.Models
         public Point3D NormalPoint { get; set; }
 
         public Point3D CenterPoint { get; set; }
-
-        public override Tuple<double, double, double, double> BoundingBox => new Tuple<double,double,double,double>(GeometryPath.Bounds.Left, GeometryPath.Bounds.Right, GeometryPath.Bounds.Bottom, GeometryPath.Bounds.Top);
 
         public override void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {

@@ -42,11 +42,6 @@ namespace Canvas3DViewer
             from3Dto2DPointConversion = new From3DTo2DPointConversion();
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            //this.DataContext = new CncFilesViewModel();
-        }
-
         private void DrawProgram(string fullName)
         {
 
@@ -206,12 +201,11 @@ namespace Canvas3DViewer
             linearMove.GeometryPath = geometry;
             p.Data = geometry;
 
-            if (isRapid == false || isRapid==true)
+            if (isRapid == false)
             {
                 p.StrokeThickness = 1;
 
                 p.Stroke = GetLineColor(linearMove.LineColor);
-
 
                 p.MouseDown += MouseClickEntity;
                 p.MouseEnter += MouseEnterEntity;
@@ -256,19 +250,9 @@ namespace Canvas3DViewer
             foreach (var item in moves)
             {
                 if (!item.IsBeamOn) { continue; }
-                //if (!(item is ArcMove) ) { continue; }
                 var entity = (item as IEntity);
                 if (double.IsNegativeInfinity(entity.BoundingBox.Item1) || double.IsInfinity(entity.BoundingBox.Item2) || double.IsNegativeInfinity(entity.BoundingBox.Item3) || double.IsInfinity(entity.BoundingBox.Item4))
                     continue;
-                //if ((item is ArcMove) == false && (item.Is2DProgram) == false)
-                //{
-                //    continue;
-                //}
-
-                //if (entity.EntityType == EEntityType.Arc)
-                //{
-                //    continue;
-                //}
 
                 xMin = Math.Min(entity.BoundingBox.Item1, xMin);
                 xMax = Math.Max(entity.BoundingBox.Item2, xMax);
@@ -465,7 +449,7 @@ namespace Canvas3DViewer
 
         private void canvas1_MouseWheel(object sender, MouseWheelEventArgs e)
         {
-
+            if (moves == null) return;
             double Z = 1;
 
             if (e.Delta > 0)

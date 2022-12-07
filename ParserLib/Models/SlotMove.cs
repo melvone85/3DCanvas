@@ -1,43 +1,29 @@
 ﻿using ParserLib.Helpers;
 using ParserLib.Interfaces;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Media;
+using System.Windows;
 using System.Windows.Media.Media3D;
 
 namespace ParserLib.Models
 {
-    public class SlotMove : ISlot
+    public class SlotMove : Entity, ISlot
     {
-        private double xMin = double.PositiveInfinity;
-        private double xMax = double.NegativeInfinity;
-        private double yMin = double.PositiveInfinity;
-        private double yMax = double.NegativeInfinity;
+        public IArc Arc1 { get; set; }
+        public IArc Arc2 { get; set; }
+        public Entity Line1 { get; set; }
+        public Entity Line2 { get; set; }
 
-        public IArc Arc1 { get;set; }
-        public IArc Arc2 { get;set; }
-        public Entity Line1 { get;set; }
-        public Entity Line2 { get;set; }
-        public TechnoHelper.ELineType LineColor { get;set; }
+        public override TechnoHelper.EEntityType EntityType => TechnoHelper.EEntityType.Slot;
 
-        public TechnoHelper.EEntityType EntityType => TechnoHelper.EEntityType.Slot;
-
-        public int SourceLine { get;set; }
-        public bool IsBeamOn { get;set; }
-        public Point3D StartPoint { get;set; }
-        public Point3D EndPoint { get;set; }
-        public bool Is2DProgram { get;set; }
-        public string OriginalLine { get;set; }
-        public PathGeometry GeometryPath { get;set; }
-
-        public Tuple<double, double, double, double> BoundingBox
+        public override Tuple<double, double, double, double> BoundingBox
         {
             get
             {
-                
+                double xMin = double.PositiveInfinity;
+                double xMax = double.NegativeInfinity;
+                double yMin = double.PositiveInfinity;
+                double yMax = double.NegativeInfinity;
+
                 xMin = Math.Min(Arc1.GeometryPath.Bounds.Left, xMin);
                 xMin = Math.Max(Arc2.GeometryPath.Bounds.Left, xMin);
                 xMin = Math.Min(Line1.GeometryPath.Bounds.Left, xMin);
@@ -62,18 +48,16 @@ namespace ParserLib.Models
 
         }
 
-        public void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
+        public override void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {
-            if(Arc1!=null)
+            if (Arc1 != null)
                 Arc1.Render(U, Un, isRot, Zradius);
-            if(Arc2!=null)
+            if (Arc2 != null)
                 Arc2.Render(U, Un, isRot, Zradius);
-            if(Line1!=null)
+            if (Line1 != null)
                 Line1.Render(U, Un, isRot, Zradius);
-            if(Line2!=null)
+            if (Line2 != null)
                 Line2.Render(U, Un, isRot, Zradius);
-
-            //throw new NotImplementedException();
         }
     }
 }
