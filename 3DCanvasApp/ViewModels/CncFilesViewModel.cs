@@ -138,6 +138,9 @@ namespace Canvas3DViewer.ViewModels
 
         private async Task<Tuple<string, double>> GetMaterialFromFile(string fileName)
         {
+            string stringMatToSearch = System.IO.Path.GetExtension(fileName).Equals(".mpf", StringComparison.OrdinalIgnoreCase)?"P_MATERIAL":"<MATERIAL";
+
+
             using (var fileStream = System.IO.File.OpenRead(fileName))
             using (var streamReader = new System.IO.StreamReader(fileStream, Encoding.UTF8, true, 1024))
             {
@@ -157,9 +160,10 @@ namespace Canvas3DViewer.ViewModels
                         }
                         else if (lineU.StartsWith("P_MATERIAL"))
                         {
-                            var lineSplitted = lineU.Split(',');
+                            var lineSplitted = lineU.Replace("P_MATERIAL(","").Split(',');
                             var m = lineSplitted[0].Replace("\"", "").Trim();
-                            var t = lineSplitted[1].Trim();
+                            var ds = lineSplitted[1].Trim();
+                            var t = double.TryParse(ds,out double d)?ds:"0.0";
                             streamReader.Close();
                             fileStream.Close();
                             return new Tuple<string, double>(m, double.Parse(t));

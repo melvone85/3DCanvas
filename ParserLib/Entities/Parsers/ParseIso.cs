@@ -14,7 +14,6 @@ using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Services.Parsers
 {
-
     public class ParseIso : IParser
     {
         public string Filename { get; set; }
@@ -22,11 +21,15 @@ namespace ParserLib.Services.Parsers
         private Regex VariableDeclarationRegex;
         private Regex MacroParsRegex;
         private double _conversionValue = 1;
+        private Dictionary<string, List<Tuple<int, string>>> _dicSubprograms;
+        private static int _indexOfM30;
+        private static int _programEndAtLine = 0;
+
+
         public ParseIso(string fileName)
         {
 
             Filename = fileName;
-            //string WordRegexPattern = @"[A-Z]?[+-]?[0-9]*\.*\d+|\b([A-Z][^A-Z]*)\b|\b([A-Z][A-Z]?[\=]?[A-Z][0-9]*)\b";
             string GcodeAxesQuotaPattern = @"\b[A-Za-z]+[\=]?[A-Za-z]*[+-]?\d*\.?\d*([+-]?[*:]?[A-Za-z]*[+-]?\d*\.?\d*)+\b";
             GcodeAxesQuotaRegex = new Regex(GcodeAxesQuotaPattern, RegexOptions.IgnoreCase);
             string VariableDeclarationPattern = @"\b[A-Za-z]+[\d]+([\=]?[A-Za-z]*[+-]?[*:]?\d*\.?\d*)+\b";
@@ -35,113 +38,6 @@ namespace ParserLib.Services.Parsers
             MacroParsRegex = new Regex(macroParsPattern, RegexOptions.IgnoreCase);
 
         }
-        HashSet<string> macroNotConverted = new HashSet<string>();
-        Dictionary<string, List<Tuple<int, string>>> _dicSubprograms;
-        private static int _indexOfM30;
-
-        //private SemaphoreSlim sm = new SemaphoreSlim(1);
-        private static int _programEndAtLine = 0;
-        public static Dictionary<int, string> ReadTextLinesAsync(string path)
-        {
-            
-
-            Dictionary<int, string> dic = new Dictionary<int, string>();
-
-            //var fileTextContent = new string[40000];
-            Stopwatch dt = new Stopwatch();
-            //dt.Start();
-            //using (StreamReader sr = File.OpenText(path))
-            //{
-            //    int x = 0;
-            //    while (!sr.EndOfStream)
-            //    {
-            //        var line = sr.ReadLine();
-            //        line = line.Trim().ToUpper();
-            //        if (line.StartsWith("//") || line.StartsWith("(*") || line.StartsWith(";") || line.Equals(string.Empty) ||
-            //            line.StartsWith("G09") || line.StartsWith("G08") || line.StartsWith("F=") ||
-            //            line.StartsWith("G40") || line.StartsWith("G41") || line.StartsWith("G42") ||
-            //            line.StartsWith("EI") || line.StartsWith("GO*") || line.StartsWith("<MATERIAL") || line.StartsWith("F1") || line.StartsWith("F2"))
-            //        {
-            //            //fileTextContent[x] = string.Empty;
-            //        }
-            //        else if (line == "M30")
-            //        {
-            //            _programEndAtLine = x;
-            //            dic[x] = line;
-            //        }
-            //        else
-            //        {
-            //            dic[x] = line;
-            //        }
-            //        x += 1;
-            //    }
-            //} //Finished. Close the file
-            //dt.Stop();
-            int counterSkippedAtTheBeginning = 0;
-            dt.Start();
-            const Int32 BufferSize = 1024;
-            using (var fileStream = File.OpenRead(path))
-            using (var streamReader = new StreamReader(fileStream, System.Text.Encoding.UTF8, true, BufferSize))
-            {
-                
-                string line;
-                int lineNumberFromReadedFile = 0;
-                int indexOfCleanedLines = 0;
-                while ((line = streamReader.ReadLine())!=null)
-                {
-                    if (line==string.Empty || line.StartsWith("//",true,null) || line.StartsWith(";", true, null) || line.StartsWith("(*", true, null) || line=="G08" || line=="G09") {
-                        counterSkippedAtTheBeginning++;
-                        lineNumberFromReadedFile++;
-                        continue;
-                    }
-
-                    line = line.TrimStart().ToUpper();
-
-
-                    if (
-                        //line.StartsWith("//",true,System.Globalization.CultureInfo.CurrentCulture) ||
-                        //line.StartsWith("(*", true, System.Globalization.CultureInfo.CurrentCulture) ||
-                        //line.StartsWith(";", true, System.Globalization.CultureInfo.CurrentCulture) ||
-                        //line.StartsWith("G09", true, System.Globalization.CultureInfo.CurrentCulture) ||
-                        //line.StartsWith("G08", true, System.Globalization.CultureInfo.CurrentCulture) ||
-                        line.StartsWith("F=", true, System.Globalization.CultureInfo.CurrentCulture) ||
-                        line.StartsWith("G40", true, System.Globalization.CultureInfo.CurrentCulture) ||
-                        line.StartsWith("G41", true, System.Globalization.CultureInfo.CurrentCulture) ||
-                        line.StartsWith("G42", true, System.Globalization.CultureInfo.CurrentCulture) ||
-                        line.StartsWith("EI", true, System.Globalization.CultureInfo.CurrentCulture) ||
-                        line.StartsWith("GO*", true, System.Globalization.CultureInfo.CurrentCulture) ||
-                        line.StartsWith("<MA", true, System.Globalization.CultureInfo.CurrentCulture) || 
-                        line.StartsWith("F1", true, System.Globalization.CultureInfo.CurrentCulture) || 
-                        line.StartsWith("F2", true, System.Globalization.CultureInfo.CurrentCulture))
-                    {
-                        lineNumberFromReadedFile++;
-                        continue;
-                    }
-                    
-                    if (line == "M30")
-                    {
-                        indexOfCleanedLines++;
-                        _indexOfM30 = indexOfCleanedLines;
-                        _programEndAtLine = lineNumberFromReadedFile;
-                        dic[lineNumberFromReadedFile] = line;
-                    }
-                    else
-                    {
-                        indexOfCleanedLines++;
-                        dic[lineNumberFromReadedFile] = line;
-                    }
-                    lineNumberFromReadedFile++;
-                    // Process line
-                }
-            }
-            dt.Stop();
-
-
-
-            Console.WriteLine($"First reading of the file: {dt.ElapsedMilliseconds} ms");
-            return dic;
-        }
-
 
         public IProgramContext GetProgramContext()
         {
@@ -158,18 +54,26 @@ namespace ParserLib.Services.Parsers
             return programContext;
         }
 
+        private IList<IBaseEntity> GetMoves(ProgramContext programContext)
+        {
+            var lstMoves = ReadAndFilterLinesFromFile();
+
+            IList<IBaseEntity> moves = GetMoves(programContext, lstMoves);
+
+            return moves;
+        }
+
         private SortedDictionary<int, string> ReadAndFilterLinesFromFile()
         {
             try
             {
-                var dic_LineNumber_Line = ReadTextLinesAsync(Filename);
+                var dic_LineNumber_Line = ReadProgramFile(Filename);
                 _dicSubprograms = new Dictionary<string, List<Tuple<int, string>>>();
 
                 Dictionary<int, string> dic = new Dictionary<int, string>();
                 Dictionary<string, string> dicVariables = new Dictionary<string, string>();
-                Dictionary<int, List<string>> dicOperationsInLabel = new Dictionary<int, List<string>>();
-
-                List<string> lstLabelOperations = new List<string>();
+                //Dictionary<int, List<string>> dicOperationsInLabel = new Dictionary<int, List<string>>();
+                //List<string> lstLabelOperations = new List<string>();
                 var variableRegex = @"[P]\d+|LV\d+";
 
                 //If M30 index is different from the end of the list Size, then probrably there will be subprograms
@@ -179,7 +83,6 @@ namespace ParserLib.Services.Parsers
 
                     ReadSubprograms(lst, _indexOfM30);
                 }
-
 
                 Parallel.ForEach(dic_LineNumber_Line.Keys, (key, state) =>
                 {
@@ -194,14 +97,9 @@ namespace ParserLib.Services.Parsers
                                 || lineToClean.StartsWith("$(POLY") || lineToClean.StartsWith("$(SQUARE"))
                     {
                         var lineCleaned = CleanLine(lineToClean);
-                        //if (lineCleaned == null)
-                        //{
 
-                        //}
                         if (lineCleaned.StartsWith("M30"))
                         {
-                            //Console.WriteLine("Adding " + lineNumber + " " + lineCleaned);
-
                             dic.Add(lineNumber, lineCleaned);
                             state.Break();
                             return;
@@ -210,8 +108,6 @@ namespace ParserLib.Services.Parsers
                         #region SubProgram
                         if (lineCleaned.StartsWith("Q"))
                         {
-                            //Console.WriteLine("Adding " + lineNumber + " " + lineCleaned);
-
                             //Be Sure to take just the Q command and not comments or other stuff
                             var q = GcodeAxesQuotaRegex.Match(lineCleaned).Value;
                             dic.Add(lineNumber, q);
@@ -313,6 +209,7 @@ namespace ParserLib.Services.Parsers
                                     }
                                 }
                             }
+
                             return;
                         }
                         else if ((lineCleaned.StartsWith("P") || lineCleaned.StartsWith("LV")) && lineCleaned.Contains("$S25"))
@@ -322,7 +219,7 @@ namespace ParserLib.Services.Parsers
                         #endregion
 
                         #region Handle line that use variables
-                        //var rr = Regex.Match(lineCleaned, VariableDeclarationRegex).Value;
+
                         var varFounded1 = (Regex.Matches(lineCleaned, variableRegex));
 
                         foreach (var item in varFounded1)
@@ -336,17 +233,10 @@ namespace ParserLib.Services.Parsers
 
                         lock (dic)
                         {
-                            //if (lineCleaned == null)
-                            //{
-
-                            //}
-                            //Console.WriteLine("Adding " + lineNumber + " " + lineCleaned);
                             dic.Add(lineNumber, lineCleaned);
                         }
                     }
                 });
-
-                //var dic1 = new SortedDictionary<int, string>(dic);
 
                 return new SortedDictionary<int, string>(dic);
                 #region Commented
@@ -524,6 +414,145 @@ namespace ParserLib.Services.Parsers
 
             return null;
         }
+        
+        public static Dictionary<int, string> ReadProgramFile(string path)
+        {
+            Dictionary<int, string> dic = new Dictionary<int, string>();
+
+            //var fileTextContent = new string[40000];
+            Stopwatch dt = new Stopwatch();
+            int counterSkippedAtTheBeginning = 0;
+            dt.Start();
+            const Int32 BufferSize = 1024;
+            using (var fileStream = File.OpenRead(path))
+            using (var streamReader = new StreamReader(fileStream, System.Text.Encoding.UTF8, true, BufferSize))
+            {
+
+                string line;
+                int lineNumberFromReadedFile = 0;
+                int indexOfCleanedLines = 0;
+                while ((line = streamReader.ReadLine()) != null)
+                {
+                    if (line == string.Empty || line.StartsWith("//", true, null) || line.StartsWith(";", true, null) || line.StartsWith("(*", true, null) || line == "G08" || line == "G09")
+                    {
+                        counterSkippedAtTheBeginning++;
+                        lineNumberFromReadedFile++;
+                        continue;
+                    }
+
+                    line = line.TrimStart().ToUpper();
+
+
+                    if (
+                        //line.StartsWith("//",true,System.Globalization.CultureInfo.CurrentCulture) ||
+                        //line.StartsWith("(*", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        //line.StartsWith(";", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        //line.StartsWith("G09", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        //line.StartsWith("G08", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        line.StartsWith("F=", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        line.StartsWith("G40", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        line.StartsWith("G41", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        line.StartsWith("G42", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        line.StartsWith("EI", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        line.StartsWith("GO*", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        line.StartsWith("<MA", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        line.StartsWith("F1", true, System.Globalization.CultureInfo.CurrentCulture) ||
+                        line.StartsWith("F2", true, System.Globalization.CultureInfo.CurrentCulture))
+                    {
+                        lineNumberFromReadedFile++;
+                        continue;
+                    }
+
+                    if (line == "M30")
+                    {
+                        indexOfCleanedLines++;
+                        _indexOfM30 = indexOfCleanedLines;
+                        _programEndAtLine = lineNumberFromReadedFile;
+                        dic[lineNumberFromReadedFile] = line;
+                    }
+                    else
+                    {
+                        indexOfCleanedLines++;
+                        dic[lineNumberFromReadedFile] = line;
+                    }
+                    lineNumberFromReadedFile++;
+                    // Process line
+                }
+            }
+            dt.Stop();
+
+            Console.WriteLine($"First reading of the file: {dt.ElapsedMilliseconds} ms");
+            return dic;
+        }
+
+        private IList<IBaseEntity> GetMoves(ProgramContext programContext, SortedDictionary<int, string> lstMoves)
+        {
+            List<IBaseEntity> moves = new List<IBaseEntity>();
+
+            try
+            {
+                foreach (var t in lstMoves)
+                {
+                    if (t.Value == null) continue;
+                    var line = t.Value;
+                    if (line.StartsWith("$(ICON_") || line.StartsWith("$(PROFILE_")) continue;
+                    if (line == null) continue;
+
+                    programContext.SourceLine = t.Key;
+
+                    if (line.StartsWith("Q"))
+                    {
+                        var n = GcodeAxesQuotaRegex.Match(line).Value;
+                        var labelToFind = n.Replace("Q", "N");
+                        if (_dicSubprograms.ContainsKey(labelToFind))
+                        {
+                            var subprogramMoves = _dicSubprograms[labelToFind];
+
+                            foreach (var subLine in subprogramMoves)
+                            {
+                                programContext.SourceLine = subLine.Item1;
+                                var subLineString = subLine.Item2;
+
+                                IBaseEntity subProgramEntity = null;
+                                ParseLine(ref programContext, moves, subLineString, ref subProgramEntity);
+                            }
+                        }
+
+                    }
+
+                    IBaseEntity entity = null;
+                    ParseLine(ref programContext, moves, line, ref entity);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error " + ex.Message);
+            }
+
+
+            return moves;
+        }
+
+        private void ParseLine(ref ProgramContext programContext, List<IBaseEntity> moves, string subLineString, ref IBaseEntity baseEntity)
+        {
+            if (subLineString.StartsWith("$"))
+            {
+                ParseMacro(subLineString, ref programContext, ref baseEntity);
+            }
+            else if (subLineString.StartsWith("G"))
+            {
+                ParseGLine(subLineString, ref programContext, ref baseEntity);
+            }
+
+            if (baseEntity != null)
+            {
+                baseEntity.Is2DProgram = programContext.Is2DProgram;
+                programContext.LastEntity = baseEntity as IEntity;
+
+                moves.Add(baseEntity);
+                programContext.UpdateProgramCenterPoint();
+            }
+        }
 
         private void ReadSubprograms(IList<string> lst, int lineNumber)
         {
@@ -542,13 +571,13 @@ namespace ParserLib.Services.Parsers
                     if (line=="" || line.StartsWith("$(FILM_") || line.StartsWith("$(ICON_") || line.StartsWith("$(MICROJOINT"))
                         continue;
 
-                    if (line.StartsWith("M30"))
-                    {
-                        readingSub = false;
-                        //break;
-                    }
+                    //if (line.StartsWith("M30"))
+                    //{
+                    //    readingSub = false;
+                    //    //break;
+                    //}
 
-                    if (line.StartsWith("N"))
+                    if (line[0]=='N')
                     {
                         var n = GcodeAxesQuotaRegex.Match(line).Value;
                         lstSubInstructions = new List<Tuple<int, string>>();
@@ -572,90 +601,6 @@ namespace ParserLib.Services.Parsers
             {
                 throw ex;
             }
-        }
-
-        private IList<IBaseEntity> GetMoves(ProgramContext programContext)
-        {
-            var lstMoves = ReadAndFilterLinesFromFile();
-
-            IList<IBaseEntity> moves = GetMoves(programContext, lstMoves);
-
-            return moves;
-        }
-
-        private IList<IBaseEntity> GetMoves(ProgramContext programContext, SortedDictionary<int, string> lstMoves)
-        {
-            List<IBaseEntity> moves = new List<IBaseEntity>();
-
-            try
-            {
-                foreach (var t in lstMoves)
-                {
-                    if (t.Value == null) continue;
-                    var line = t.Value;
-                    if (line.StartsWith("$(ICON_") || line.StartsWith("$(PROFILE_")) continue;
-                    if (line == null) continue;
-
-                    if (line.StartsWith("Q"))
-                    {
-                        var n = GcodeAxesQuotaRegex.Match(line).Value;
-                        var labelToFind = n.Replace("Q", "N");
-                        if (_dicSubprograms.ContainsKey(labelToFind))
-                        {
-                            var subprogramMoves = _dicSubprograms[labelToFind];
-
-                            foreach (var subLine in subprogramMoves)
-                            {
-
-                                programContext.SourceLine = subLine.Item1;
-                                var subLineString = subLine.Item2;
-
-                                IBaseEntity subProgramEntity = null;
-                                if (subLineString.StartsWith("$"))
-                                {
-                                    ParseMacro(subLineString, ref programContext, ref subProgramEntity);
-                                }
-                                else if (subLineString.StartsWith("G"))
-                                {
-                                    ParseGLine(subLineString, ref programContext, ref subProgramEntity);
-                                }
-
-                                if (subProgramEntity != null)
-                                {
-                                    moves.Add(subProgramEntity);
-                                    programContext.UpdateProgramCenterPoint();
-                                }
-                            }
-                        }
-
-                    }
-
-                    programContext.SourceLine = t.Key;
-
-                    IBaseEntity entity = null;
-                    if (line.StartsWith("$"))
-                    {
-                        ParseMacro(line, ref programContext, ref entity);
-                    }
-                    else if (line.StartsWith("G"))
-                    {
-                        ParseGLine(line, ref programContext, ref entity);
-                    }
-
-                    if (entity != null)
-                    {
-                        moves.Add(entity);
-                        programContext.UpdateProgramCenterPoint();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error " + ex.Message);
-            }
-
-
-            return moves;
         }
 
 
@@ -732,11 +677,11 @@ namespace ParserLib.Services.Parsers
                         break;
                 }
 
-                if (entity != null)
-                {
-                    entity.Is2DProgram = programContext.Is2DProgram;
-                    programContext.LastEntity = (entity as IEntity);
-                }
+                //if (entity != null)
+                //{
+                //    entity.Is2DProgram = programContext.Is2DProgram;
+                //    programContext.LastEntity = (entity as IEntity);
+                //}
             }
         }
 
@@ -752,9 +697,9 @@ namespace ParserLib.Services.Parsers
 
             e.StartPoint = Create3DPoint(programContext, programContext.LastEntity.EndPoint);
 
-            BuildMove(ref entity, e.StartPoint, regexMatches, programContext);
+            BuildMove(ref entity, regexMatches, programContext);
 
-            e.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, (entity as IEntity).EndPoint, programContext.IsIncremental ? programContext.LastEntity.EndPoint : new Point3D(0, 0, 0)); //new Point3D(programContext.ReferenceMove.EndPoint.X + entity.EndPoint.X, programContext.ReferenceMove.EndPoint.Y + entity.EndPoint.Y, programContext.ReferenceMove.EndPoint.Z + entity.EndPoint.Z);
+            e.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, e.EndPoint, programContext.IsIncremental ? programContext.LastEntity.EndPoint : new Point3D(0, 0, 0)); //new Point3D(programContext.ReferenceMove.EndPoint.X + entity.EndPoint.X, programContext.ReferenceMove.EndPoint.Y + entity.EndPoint.Y, programContext.ReferenceMove.EndPoint.Z + entity.EndPoint.Z);
 
             if (entity is ArcMove)
             {
@@ -799,7 +744,7 @@ namespace ParserLib.Services.Parsers
             return value * _conversionValue;
         }
 
-        public double Converter(string value)
+        private double Converter(string value)
         {
             return Converter(double.Parse(value));
         }
@@ -1079,7 +1024,7 @@ namespace ParserLib.Services.Parsers
             return lineToClean.Trim();
         }
 
-        private void BuildMove(ref IBaseEntity entity, Point3D startPoint, MatchCollection matches, ProgramContext programContext)
+        private void BuildMove(ref IBaseEntity entity, MatchCollection matches, ProgramContext programContext)
         {
             var endPoint = new Point3D(0, 0, 0);
             var viaPoint = new Point3D(0, 0, 0);
