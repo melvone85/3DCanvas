@@ -509,7 +509,15 @@ foreach (var item in varFounded1)
             if (baseEntity != null)
             {
                 baseEntity.Is2DProgram = programContext.Is2DProgram;
-                programContext.LastEntity = baseEntity as IEntity;
+
+                if (baseEntity.EntityType == EEntityType.Rect)
+                    programContext.LastEntity = (baseEntity as RectMoves).Lines.Last();
+                else if(baseEntity.EntityType == EEntityType.Slot)
+                    programContext.LastEntity = (baseEntity as SlotMove).Line2;
+                else if (baseEntity.EntityType == EEntityType.Poly)
+                    programContext.LastEntity = (baseEntity as PolyMoves).Lines.Last();
+                else
+                    programContext.LastEntity = baseEntity as IEntity;
 
                 programContext.UpdateProgramCenterPoint();
                 moves.Add(baseEntity);
@@ -590,12 +598,6 @@ foreach (var item in varFounded1)
                     entity = new LinearMove { StartPoint = arcMove.StartPoint, EndPoint = arcMove.EndPoint, OriginalLine = arcMove.OriginalLine, SourceLine = arcMove.SourceLine, IsBeamOn = arcMove.IsBeamOn, LineColor = arcMove.LineColor };
                 }
             }
-
-            //if (entity != null)
-            //{
-            //    entity.Is2DProgram = programContext.Is2DProgram;
-            //    programContext.LastEntity = entity;
-            //}
 
             return entity;
         }
@@ -871,6 +873,7 @@ foreach (var item in varFounded1)
                 case "P_G00":
                 case "P_G01":
                     var g01Pars = GetParsFromLine(line);
+
                     entity = new LinearMove { OriginalLine = lineP };
                     entity = CalculateStartAndEndPoint(programContext, entity, g01Pars);
                     break;
@@ -958,23 +961,16 @@ foreach (var item in varFounded1)
 
         }
 
-
-        HashSet<string> macroNotConverted = new HashSet<string>();
-
         public string CleanLine(string lineToClean)
         {
-
-            if (lineToClean.Contains("//") || lineToClean.Contains("(*"))
+            if (lineToClean.Contains(";"))
             {
-                int splitcomment = lineToClean.IndexOf("//") != -1 ? lineToClean.IndexOf("//") : lineToClean.IndexOf("(*") != -1 ? lineToClean.IndexOf("(*") : 0;
+                int splitcomment = lineToClean.IndexOf(";");
                 lineToClean = lineToClean.Substring(0, splitcomment);
             }
-            if (lineToClean.Contains("#")) lineToClean = lineToClean.Substring(0, lineToClean.IndexOf("#"));
             if (lineToClean.Contains("  ")) lineToClean = lineToClean.Replace("  ", " ");
             if (lineToClean.Contains(") (")) lineToClean = lineToClean.Replace(") (", ")(");
-            if (lineToClean.Contains(" =")) lineToClean = lineToClean.Replace(" =", "=").Replace("= ", "=");
-            if (lineToClean.Contains("LF=")) lineToClean = lineToClean.Substring(0, lineToClean.IndexOf("LF"));
-            if (lineToClean.Contains("F=")) lineToClean = lineToClean.Substring(0, lineToClean.IndexOf("F="));
+            if (lineToClean.Contains("=")) lineToClean = lineToClean.Replace(" =", "=").Replace("= ", "=");
 
             return lineToClean.Trim();
         }
@@ -989,7 +985,7 @@ foreach (var item in varFounded1)
             endPoint.Y = GetQuotaValue(quotas[1], programContext);
             endPoint.Z = programContext.Is2DProgram ? 0.0 : GetQuotaValue(quotas[2], programContext);
 
-            if (quotas.Length > 7)
+            if (entity.EntityType!=EEntityType.Line)
             {
                 viaPoint.X = GetQuotaValue(quotas[5], programContext);
                 viaPoint.Y = GetQuotaValue(quotas[6], programContext);

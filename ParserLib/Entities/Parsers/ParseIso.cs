@@ -414,7 +414,7 @@ namespace ParserLib.Services.Parsers
 
             return null;
         }
-        
+
         public static Dictionary<int, string> ReadProgramFile(string path)
         {
             Dictionary<int, string> dic = new Dictionary<int, string>();
@@ -547,10 +547,18 @@ namespace ParserLib.Services.Parsers
             if (baseEntity != null)
             {
                 baseEntity.Is2DProgram = programContext.Is2DProgram;
-                programContext.LastEntity = baseEntity as IEntity;
 
-                moves.Add(baseEntity);
+                if (baseEntity.EntityType == EEntityType.Rect)
+                    programContext.LastEntity = (baseEntity as RectMoves).Lines.Last();
+                else if (baseEntity.EntityType == EEntityType.Slot)
+                    programContext.LastEntity = (baseEntity as SlotMove).Line2;
+                else if (baseEntity.EntityType == EEntityType.Poly)
+                    programContext.LastEntity = (baseEntity as PolyMoves).Lines.Last();
+                else
+                    programContext.LastEntity = baseEntity as IEntity;
+
                 programContext.UpdateProgramCenterPoint();
+                moves.Add(baseEntity);
             }
         }
 
@@ -568,7 +576,7 @@ namespace ParserLib.Services.Parsers
                 {
                     var line = lst[i];
                     //if (line == "" || line.StartsWith("//") || line.StartsWith("(*")) continue;
-                    if (line=="" || line.StartsWith("$(FILM_") || line.StartsWith("$(ICON_") || line.StartsWith("$(MICROJOINT"))
+                    if (line == "" || line.StartsWith("$(FILM_") || line.StartsWith("$(ICON_") || line.StartsWith("$(MICROJOINT"))
                         continue;
 
                     //if (line.StartsWith("M30"))
@@ -577,7 +585,7 @@ namespace ParserLib.Services.Parsers
                     //    //break;
                     //}
 
-                    if (line[0]=='N')
+                    if (line[0] == 'N')
                     {
                         var n = GcodeAxesQuotaRegex.Match(line).Value;
                         lstSubInstructions = new List<Tuple<int, string>>();
@@ -602,7 +610,6 @@ namespace ParserLib.Services.Parsers
                 throw ex;
             }
         }
-
 
         private void ParseGLine(string line, ref ProgramContext programContext, ref IBaseEntity entity)
         {
@@ -704,7 +711,7 @@ namespace ParserLib.Services.Parsers
             if (entity is ArcMove)
             {
                 var arcMove = (entity as ArcMove);
-                
+
                 arcMove.ViaPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, arcMove.ViaPoint);
 
                 GeoHelper.AddCircularMoveProperties(ref arcMove);

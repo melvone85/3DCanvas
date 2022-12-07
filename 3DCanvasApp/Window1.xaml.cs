@@ -206,7 +206,7 @@ namespace Canvas3DViewer
             linearMove.GeometryPath = geometry;
             p.Data = geometry;
 
-            if (isRapid == false)
+            if (isRapid == false || isRapid==true)
             {
                 p.StrokeThickness = 1;
 
