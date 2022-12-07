@@ -2,7 +2,6 @@
 using ParserLib.Interfaces;
 using System;
 using System.Collections.Generic;
-using System.Windows;
 using System.Windows.Media.Media3D;
 
 namespace ParserLib.Models
@@ -40,12 +39,6 @@ namespace ParserLib.Models
                     yMin = Math.Min(item.GeometryPath.Bounds.Bottom, yMin);
                     yMax = Math.Max(item.GeometryPath.Bounds.Top, yMax);
                 }
-
-
-
-
-                //return new Rect(xMin, yMin, xMax-xMin, yMax-yMin);
-
                 return new Tuple<double, double, double, double>(xMin, xMax, yMin, yMax);
             }
 

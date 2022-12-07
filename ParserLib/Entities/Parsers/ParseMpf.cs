@@ -107,7 +107,7 @@ namespace ParserLib.Services.Parsers
                             || lineToClean.StartsWith("P_G01") || lineToClean.StartsWith("P_G00") || lineToClean.StartsWith("P_G104") || lineToClean.StartsWith("P_G90")
                             || lineToClean.StartsWith("P_G70") || lineToClean.StartsWith("P_G71") || lineToClean.StartsWith("P_G102") || lineToClean.StartsWith("P_G103")
                             )
-                    { 
+                    {
                         var lineCleaned = CleanLine(lineToClean);
 
                         if (lineCleaned.StartsWith("M30"))
@@ -130,7 +130,7 @@ namespace ParserLib.Services.Parsers
                         #region Handle GO
                         if (lineCleaned.StartsWith("GO"))
                         {
-                            
+
                         }
 
                         #endregion
@@ -162,21 +162,22 @@ namespace ParserLib.Services.Parsers
                         if (lineCleaned.Contains("PVAR") || lineCleaned.Contains("LVVAR"))
                         {
                             var varFounded1 = (Regex.Matches(lineCleaned, variableRegex));
-foreach (var item in varFounded1)
-                        {
+                            foreach (var item in varFounded1)
+                            {
                                 if (dicVariables.ContainsKey(item.ToString()))
                                 {
                                     lineCleaned = lineCleaned.Replace(item.ToString(), dicVariables[item.ToString()]);
                                 }
-                                else {
+                                else
+                                {
                                     lineCleaned = lineCleaned.Replace(item.ToString(), "0");
                                 }
-                        }
+                            }
                         }
 
                         //var varFounded1 = (Regex.Matches(lineCleaned, variableRegex));
 
-                        
+
                         #endregion
 
                         lock (dic)
@@ -275,7 +276,7 @@ foreach (var item in varFounded1)
                     IBaseEntity entity = null;
                     ParseLine(ref programContext, moves, line, ref entity);
 
-                    
+
                 }
             }
             catch (Exception ex)
@@ -630,34 +631,34 @@ foreach (var item in varFounded1)
                     var rectParFounded = MacroParsRegex.Matches(line);
 
 
-                        var centerPointRectX = Converter(rectParFounded[0].Value);
-                        var centerPointRectY = Converter(rectParFounded[1].Value);
-                        var centerPointRectZ = Converter(rectParFounded[2].Value);
-                        Point3D centerPoint = new Point3D(centerPointRectX, centerPointRectY, centerPointRectZ);
+                    var centerPointRectX = Converter(rectParFounded[0].Value);
+                    var centerPointRectY = Converter(rectParFounded[1].Value);
+                    var centerPointRectZ = Converter(rectParFounded[2].Value);
+                    Point3D centerPoint = new Point3D(centerPointRectX, centerPointRectY, centerPointRectZ);
 
-                        var vertexPointRectX = Converter(rectParFounded[3].Value);
-                        var vertexPointRectY = Converter(rectParFounded[4].Value);
-                        var vertexPointRectZ = Converter(rectParFounded[5].Value);
-                        Point3D vertexPoint = new Point3D(vertexPointRectX, vertexPointRectY, vertexPointRectZ);
+                    var vertexPointRectX = Converter(rectParFounded[3].Value);
+                    var vertexPointRectY = Converter(rectParFounded[4].Value);
+                    var vertexPointRectZ = Converter(rectParFounded[5].Value);
+                    Point3D vertexPoint = new Point3D(vertexPointRectX, vertexPointRectY, vertexPointRectZ);
 
-                        var sidePointRextX = Converter(rectParFounded[6].Value);
-                        var sidePointRextY = Converter(rectParFounded[7].Value);
-                        var sidePointRextZ = Converter(rectParFounded[8].Value);
-                        Point3D sidePoint = new Point3D(sidePointRextX, sidePointRextY, sidePointRextZ);
+                    var sidePointRextX = Converter(rectParFounded[6].Value);
+                    var sidePointRextY = Converter(rectParFounded[7].Value);
+                    var sidePointRextZ = Converter(rectParFounded[8].Value);
+                    Point3D sidePoint = new Point3D(sidePointRextX, sidePointRextY, sidePointRextZ);
 
-                        entity = new RectMoves()
-                        {
-                            SourceLine = programContext.SourceLine,
-                            IsBeamOn = programContext.IsBeamOn,
-                            LineColor = programContext.ContourLineType,
-                            OriginalLine = line,
-                            SidePoint = sidePoint,
-                            VertexPoint = vertexPoint,
-                            CenterPoint = centerPoint
-                        };
+                    entity = new RectMoves()
+                    {
+                        SourceLine = programContext.SourceLine,
+                        IsBeamOn = programContext.IsBeamOn,
+                        LineColor = programContext.ContourLineType,
+                        OriginalLine = line,
+                        SidePoint = sidePoint,
+                        VertexPoint = vertexPoint,
+                        CenterPoint = centerPoint
+                    };
 
-                        var rectMove = entity as RectMoves;
-                        GeoHelper.GetMovesFromMacroRect(ref rectMove);
+                    var rectMove = entity as RectMoves;
+                    GeoHelper.GetMovesFromMacroRect(ref rectMove);
 
                     break;
 
@@ -767,7 +768,7 @@ foreach (var item in varFounded1)
         }
 
 
-        public void BuildMove(ref IBaseEntity entity, string[] quotas,ProgramContext programContext)
+        public void BuildMove(ref IBaseEntity entity, string[] quotas, ProgramContext programContext)
         {
             var endPoint = new Point3D(0, 0, 0);
             var viaPoint = new Point3D(0, 0, 0);
@@ -776,7 +777,7 @@ foreach (var item in varFounded1)
             endPoint.Y = GetQuotaValue(quotas[1], programContext);
             endPoint.Z = programContext.Is2DProgram ? 0.0 : GetQuotaValue(quotas[2], programContext);
 
-            if (entity.EntityType!=EEntityType.Line)
+            if (entity.EntityType != EEntityType.Line)
             {
                 viaPoint.X = GetQuotaValue(quotas[5], programContext);
                 viaPoint.Y = GetQuotaValue(quotas[6], programContext);
