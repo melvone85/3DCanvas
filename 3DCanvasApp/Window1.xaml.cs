@@ -45,7 +45,7 @@ namespace Canvas3DViewer
         private void DrawProgram(string fullName)
         {
 
-            //Stopwatch st = new Stopwatch();
+
             //Stopwatch ost = new Stopwatch();
 
             //st.Start();
@@ -65,7 +65,7 @@ namespace Canvas3DViewer
                 //ost.Stop();
                 //Console.WriteLine($"Time to obtain moves of: {System.IO.Path.GetFileName(fullName)} is {ost.ElapsedMilliseconds}ms");
 
-
+                Stopwatch st = Stopwatch.StartNew();
 
                 if (moves == null) return;
 
@@ -120,16 +120,17 @@ namespace Canvas3DViewer
 
                     }
                 }
-
+st.Stop();
                 InitialTransform();
+                
+                Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {st.ElapsedMilliseconds} ms");
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
 
-            //var ms = st.ElapsedMilliseconds;
-            //Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {ms}ms");
+           
         }
 
         private void DrawArc(ArcMove arcMove)
@@ -137,24 +138,24 @@ namespace Canvas3DViewer
             PathFigure pf = new PathFigure();
             ArcSegment ls = new ArcSegment();
 
-            BindingBase sourceBinding = new Binding { Source = arcMove, Path = new PropertyPath("StartPoint"), Converter = from3Dto2DPointConversion };
-            BindingOperations.SetBinding(pf, PathFigure.StartPointProperty, sourceBinding);
+            //BindingBase sourceBinding = new Binding { Source = arcMove, Path = new PropertyPath("StartPoint"), Converter = from3Dto2DPointConversion };
+            BindingOperations.SetBinding(pf, PathFigure.StartPointProperty, new Binding { Source = arcMove, Path = new PropertyPath("StartPoint"), Converter = from3Dto2DPointConversion });
 
             pf.Segments.Add(ls);
 
-            BindingBase destinationBindingPoint = new Binding { Source = arcMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion };
-            BindingBase destinationBindingSize = new Binding { Source = arcMove, Path = new PropertyPath("ArcSize") };
-            BindingBase destinationBindingRotationAngle = new Binding { Source = arcMove, Path = new PropertyPath("RotationAngle") };
-            BindingBase destinationBindingIsLargeArc = new Binding { Source = arcMove, Path = new PropertyPath("IsLargeArc") };
-            BindingBase destinationBindingIsStroked = new Binding { Source = arcMove, Path = new PropertyPath("IsStroked") };
-            BindingBase destinationBindingSweepDirection = new Binding { Source = arcMove, Path = new PropertyPath("ArcSweepDirection") };
-
-            BindingOperations.SetBinding(ls, ArcSegment.PointProperty, destinationBindingPoint);
-            BindingOperations.SetBinding(ls, ArcSegment.SizeProperty, destinationBindingSize);
-            BindingOperations.SetBinding(ls, ArcSegment.RotationAngleProperty, destinationBindingRotationAngle);
-            BindingOperations.SetBinding(ls, ArcSegment.IsLargeArcProperty, destinationBindingIsLargeArc);
-            BindingOperations.SetBinding(ls, ArcSegment.IsStrokedProperty, destinationBindingIsStroked);
-            BindingOperations.SetBinding(ls, ArcSegment.SweepDirectionProperty, destinationBindingSweepDirection);
+            //BindingBase destinationBindingPoint = new Binding { Source = arcMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion };
+            //BindingBase destinationBindingSize = new Binding { Source = arcMove, Path = new PropertyPath("ArcSize") };
+            //BindingBase destinationBindingRotationAngle = new Binding { Source = arcMove, Path = new PropertyPath("RotationAngle") };
+            //BindingBase destinationBindingIsLargeArc = new Binding { Source = arcMove, Path = new PropertyPath("IsLargeArc") };
+            //BindingBase destinationBindingIsStroked = new Binding { Source = arcMove, Path = new PropertyPath("IsStroked") };
+            //BindingBase destinationBindingSweepDirection = new Binding { Source = arcMove, Path = new PropertyPath("ArcSweepDirection") };
+            
+            BindingOperations.SetBinding(ls, ArcSegment.PointProperty, new Binding { Source = arcMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion });
+            BindingOperations.SetBinding(ls, ArcSegment.SizeProperty, new Binding { Source = arcMove, Path = new PropertyPath("ArcSize") });
+            BindingOperations.SetBinding(ls, ArcSegment.RotationAngleProperty, new Binding { Source = arcMove, Path = new PropertyPath("RotationAngle") });
+            BindingOperations.SetBinding(ls, ArcSegment.IsLargeArcProperty, new Binding { Source = arcMove, Path = new PropertyPath("IsLargeArc") });
+            BindingOperations.SetBinding(ls, ArcSegment.IsStrokedProperty, new Binding { Source = arcMove, Path = new PropertyPath("IsStroked") });
+            BindingOperations.SetBinding(ls, ArcSegment.SweepDirectionProperty, new Binding { Source = arcMove, Path = new PropertyPath("ArcSweepDirection") });
 
             PathGeometry geometry = new PathGeometry();
             geometry.Figures.Add(pf);
@@ -231,7 +232,7 @@ namespace Canvas3DViewer
             Matrix3D Un = Matrix3D.Identity;
             Point3D cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
 
-            U.RotateAt(new Quaternion(new Vector3D(1, 0, 0), 180), cor);
+            U.RotateAt(new Quaternion(new Vector3D(1, 0, 0), 180), centerRotation);
             Un.RotateAt(new Quaternion(new Vector3D(1, 0, 0), 180), new Point3D(0, 0, 0));
 
             foreach (var item in moves)

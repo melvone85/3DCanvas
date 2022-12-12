@@ -94,59 +94,27 @@ namespace ParserLib.Services.Parsers
                     ReadSubprograms(lst, _indexOfM30);
                 }
 
+                var insertInLinesDictionary = false;
                 foreach (var line in dic_LineNumber_Line)
                 {
                     var lineCleaned = line.Value;
                     var lineNumber = line.Key;
+                    insertInLinesDictionary = true;
 
                     #region SubProgram
-                    if (lineCleaned.StartsWith("Q"))
-                    {
-                        //Be Sure to take just the Q command and not comments or other stuff
-                        var subCallCommand = SubCallRegex.Match(lineCleaned).Value;
-                        lineCleaned = subCallCommand;
-                    }
+                    lineCleaned = HandleSubCallLine(lineCleaned);
                     #endregion
 
                     #region Handle Variables declaration
-                    if ((lineCleaned.StartsWith("P") || lineCleaned.StartsWith("LV")) && lineCleaned.Contains("=") && lineCleaned.Contains("$S25") == false)
-                    {
-                        MatchCollection m = VariableDeclarationRegex.Matches(lineCleaned);
-
-                        foreach (var item in m)
-                        {
-                            var varDeclaration = item.ToString().Split(new string[] { "=" }, StringSplitOptions.RemoveEmptyEntries);
-                            double.TryParse(varDeclaration[1].Trim(), out double val);
-                            if (dicVariables.ContainsKey(varDeclaration[0].Trim()) == false && varDeclaration != null)
-                            {
-                                dicVariables.Add(varDeclaration[0].Trim(), val.ToString());
-                            }
-                        }
-
-                        continue;
-                    }
-                    else if (lineCleaned.Contains("$S25"))
-                    {
-                        continue;
-                    }
+                    insertInLinesDictionary = GetVariablesDeclarationLine(dicVariables, insertInLinesDictionary, lineCleaned);
                     #endregion
 
                     #region Handle line that use variables
-                    if (dicVariables.Count > 0)
-                    {
-                        var varUsedInLine = Regex.Matches(lineCleaned, variableRegexPattern);
-
-                        foreach (var item in varUsedInLine)
-                        {
-                            if (dicVariables.ContainsKey(item.ToString()))
-                            {
-                                lineCleaned = lineCleaned.Replace(item.ToString(), dicVariables[item.ToString()]);
-                            }
-                        }
-                    }
+                    lineCleaned = ReplaceVariablesInLine(dicVariables, lineCleaned);
                     #endregion
 
-                    dic.Add(lineNumber, lineCleaned);
+                    if (insertInLinesDictionary)
+                        dic.Add(lineNumber, lineCleaned);
 
                     if (lineCleaned.StartsWith("M30")) break;
                 }
@@ -162,6 +130,62 @@ namespace ParserLib.Services.Parsers
             }
 
             return dic;
+        }
+
+        private string HandleSubCallLine(string lineCleaned)
+        {
+            if (lineCleaned.StartsWith("Q"))
+            {
+                //Be Sure to take just the Q command and not comments or other stuff
+                var subCallCommand = SubCallRegex.Match(lineCleaned).Value;
+                lineCleaned = subCallCommand;
+            }
+
+            return lineCleaned;
+        }
+
+        private string ReplaceVariablesInLine(Dictionary<string, string> dicVariables, string lineCleaned)
+        {
+            if (dicVariables.Count > 0)
+            {
+                var varUsedInLine = Regex.Matches(lineCleaned, variableRegexPattern);
+
+                foreach (var item in varUsedInLine)
+                {
+                    if (dicVariables.ContainsKey(item.ToString()))
+                    {
+                        lineCleaned = lineCleaned.Replace(item.ToString(), dicVariables[item.ToString()]);
+                    }
+                }
+            }
+
+            return lineCleaned;
+        }
+
+        private bool GetVariablesDeclarationLine(Dictionary<string, string> dicVariables, bool insertInLineList, string lineCleaned)
+        {
+            if ((lineCleaned.StartsWith("P") || lineCleaned.StartsWith("LV")) && lineCleaned.Contains("=") && lineCleaned.Contains("$S25") == false)
+            {
+                MatchCollection m = VariableDeclarationRegex.Matches(lineCleaned);
+
+                foreach (var item in m)
+                {
+                    var varDeclaration = item.ToString().Split(new string[] { "=" }, StringSplitOptions.RemoveEmptyEntries);
+                    double.TryParse(varDeclaration[1].Trim(), out double val);
+                    if (dicVariables.ContainsKey(varDeclaration[0].Trim()) == false && varDeclaration != null)
+                    {
+                        dicVariables.Add(varDeclaration[0].Trim(), val.ToString());
+                    }
+                }
+
+                return false;
+            }
+            else if (lineCleaned.Contains("$S25"))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         public Dictionary<int, string> ReadProgramFile()
@@ -247,7 +271,7 @@ namespace ParserLib.Services.Parsers
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error " + ex.Message);
+                Console.WriteLine("Error... " + ex.Message);
             }
             finally
             {
@@ -485,8 +509,14 @@ namespace ParserLib.Services.Parsers
             return value * _conversionValue;
         }
 
+        private char[] mathSymbols = new char[] { '-', '+', '*', ':' };
         private double Converter(string value)
         {
+            if (value.IndexOfAny(mathSymbols,1)!=-1) 
+            {
+                var eval = StringToFormula.Eval(value);
+                return Converter(eval);
+            }
             return Converter(double.Parse(value));
         }
 
@@ -810,17 +840,16 @@ namespace ParserLib.Services.Parsers
             }
             else
             {
-                if (axValue.Contains("#"))
-                {
-                    var searchingForLabel = int.Parse(Regex.Match(axValue, @"\d+\.+\d+").Value);
-                }
+                //if (axValue.Contains("#"))
+                //{
+                //    var searchingForLabel = int.Parse(Regex.Match(axValue, @"\d+\.+\d+").Value);
+                //}
 
                 bool result = axValue.Any(x => !char.IsLetter(x));
 
                 if (result)
                 {
                     string formula = axValue;
-                    //StringToFormula stf = new StringToFormula();
                     var eval = StringToFormula.Eval(formula);
                     return Converter(eval);
                 }
@@ -838,8 +867,6 @@ namespace ParserLib.Services.Parsers
             }
             return double.Parse(axValue);
         }
-
-
 
         private SortedDictionary<int, string> ReadAndFilterLinesFromFile(bool trueq)
         {
