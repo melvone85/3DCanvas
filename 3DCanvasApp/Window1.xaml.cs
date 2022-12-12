@@ -45,14 +45,14 @@ namespace Canvas3DViewer
         private void DrawProgram(string fullName)
         {
 
-            Stopwatch st = new Stopwatch();
-            Stopwatch ost = new Stopwatch();
+            //Stopwatch st = new Stopwatch();
+            //Stopwatch ost = new Stopwatch();
 
-            st.Start();
+            //st.Start();
 
             try
             {
-                ost.Start();
+                //ost.Start();
                 Parser parser = null;
 
                 if ((this.DataContext as CncFilesViewModel).SelectedExtensionFile == "*.iso")
@@ -62,8 +62,8 @@ namespace Canvas3DViewer
 
                 var programContext = parser.GetProgramContext();
                 moves = (List<IBaseEntity>)programContext.Moves;
-                ost.Stop();
-                Console.WriteLine($"Time to obtain moves of: {System.IO.Path.GetFileName(fullName)} is {ost.ElapsedMilliseconds}ms");
+                //ost.Stop();
+                //Console.WriteLine($"Time to obtain moves of: {System.IO.Path.GetFileName(fullName)} is {ost.ElapsedMilliseconds}ms");
 
 
 
@@ -128,8 +128,8 @@ namespace Canvas3DViewer
                 Console.WriteLine(ex.Message);
             }
 
-            var ms = st.ElapsedMilliseconds;
-            Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {ms}ms");
+            //var ms = st.ElapsedMilliseconds;
+            //Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {ms}ms");
         }
 
         private void DrawArc(ArcMove arcMove)
