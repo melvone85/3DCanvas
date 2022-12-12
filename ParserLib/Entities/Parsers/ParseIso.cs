@@ -31,6 +31,7 @@ namespace ParserLib.Services.Parsers
         private string macroParsPattern = @"([+-]?[*:]?\d+\.?\d*)+";
         private string variableRegexPattern = @"^(P\d+|LV\d+)";
         private string subCallPattern = @"^(Q\d+|N\d+)";
+        private char[] mathSymbols = new char[] { '-', '+', '*', ':' };
 
         public ParseIso(string fileName)
         {
@@ -509,7 +510,6 @@ namespace ParserLib.Services.Parsers
             return value * _conversionValue;
         }
 
-        private char[] mathSymbols = new char[] { '-', '+', '*', ':' };
         private double Converter(string value)
         {
             if (value.IndexOfAny(mathSymbols,1)!=-1) 
