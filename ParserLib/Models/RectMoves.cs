@@ -41,7 +41,6 @@ namespace ParserLib.Models
                 }
                 return new Tuple<double, double, double, double>(xMin, xMax, yMin, yMax);
             }
-
         }
     }
 }

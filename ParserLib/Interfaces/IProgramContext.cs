@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Windows.Media.Media3D;
 using static ParserLib.Helpers.TechnoHelper;
 
@@ -17,15 +16,14 @@ namespace ParserLib.Interfaces
         bool IsTubeProgram { get; set; }
         bool IsWeldProgram { get; set; }
         bool IsIncremental { get; set; }
-        bool IsInchProgram { get; set; }    
-        bool InMainProgram { get; set; } 
+        bool IsInchProgram { get; set; }
+        bool InMainProgram { get; set; }
         bool IsBeamOn { get; set; }
         bool IsMarkingProgram { get; set; }
         int SourceLine { get; set; }
         ELineType ContourLineType { get; set; }
 
         IList<IBaseEntity> Moves { get; set; }
-
 
         void UpdateProgramCenterPoint();
     }

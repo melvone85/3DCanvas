@@ -1,5 +1,4 @@
-﻿using BenchmarkDotNet.Attributes;
-using ParserLib.Helpers;
+﻿using ParserLib.Helpers;
 using ParserLib.Interfaces;
 using ParserLib.Models;
 using System;
@@ -35,7 +34,6 @@ namespace ParserLib.Services.Parsers
 
         public ParseIso(string fileName)
         {
-
             Filename = fileName;
             SubCallRegex = new Regex(subCallPattern, RegexOptions.IgnoreCase);
             GcodeAxesQuotaRegex = new Regex(GcodeAxesQuotaPattern, RegexOptions.IgnoreCase);
@@ -59,7 +57,6 @@ namespace ParserLib.Services.Parsers
 
                 LastHeadPosition = new Point3D(0, 0, 0)
             };
-
 
             programContext.Moves = GetMoves(programContext);
 
@@ -103,16 +100,22 @@ namespace ParserLib.Services.Parsers
                     insertInLinesDictionary = true;
 
                     #region SubProgram
+
                     lineCleaned = HandleSubCallLine(lineCleaned);
-                    #endregion
+
+                    #endregion SubProgram
 
                     #region Handle Variables declaration
+
                     insertInLinesDictionary = GetVariablesDeclarationLine(dicVariables, insertInLinesDictionary, lineCleaned);
-                    #endregion
+
+                    #endregion Handle Variables declaration
 
                     #region Handle line that use variables
+
                     lineCleaned = ReplaceVariablesInLine(dicVariables, lineCleaned);
-                    #endregion
+
+                    #endregion Handle line that use variables
 
                     if (insertInLinesDictionary)
                         dic.Add(lineNumber, lineCleaned);
@@ -230,7 +233,6 @@ namespace ParserLib.Services.Parsers
             Console.WriteLine($"{Filename} First reading of the file: {dt.ElapsedMilliseconds} ms");
             // Restituisce il dizionario contenente le linee del file
             return lines;
-
         }
 
         private IList<IBaseEntity> GetMoves(ProgramContext programContext, Dictionary<int, string> lstMoves)
@@ -280,7 +282,6 @@ namespace ParserLib.Services.Parsers
                 Console.WriteLine($"{Filename} GetMoves: {dt.ElapsedMilliseconds} ms");
             }
 
-
             return moves;
         }
 
@@ -309,7 +310,6 @@ namespace ParserLib.Services.Parsers
                     programContext.LastHeadPosition = (baseEntity as PolyMoves).Lines.Last().EndPoint;
                 else
                     programContext.LastHeadPosition = (baseEntity as Entity).EndPoint;
-
 
                 programContext.LastEntity = baseEntity as IEntity;
 
@@ -392,11 +392,13 @@ namespace ParserLib.Services.Parsers
                         entity = CalculateStartAndEndPoint(programContext, entity, m);
 
                         break;
+
                     case 70:
                     case 71:
                         _conversionValue = gCodeNumber == 70 ? 25.4 : 1;
                         programContext.IsInchProgram = gCodeNumber == 70;
                         break;
+
                     case 2:
                     case 3:
 
@@ -424,20 +426,22 @@ namespace ParserLib.Services.Parsers
                     case 90:
                         programContext.IsIncremental = false;
                         break;
+
                     case 91:
                         programContext.IsIncremental = true;
                         break;
+
                     case 100:
                         break;
 
                     case 102:
                     case 103:
                         break;
+
                     case 104:
                         entity = new ArcMove { OriginalLine = line };
                         entity = CalculateStartAndEndPoint(programContext, entity, m);
                         break;
-
 
                     default:
                         break;
@@ -480,7 +484,6 @@ namespace ParserLib.Services.Parsers
                 {
                     entity = new LinearMove { StartPoint = arcMove.StartPoint, EndPoint = arcMove.EndPoint, OriginalLine = arcMove.OriginalLine, SourceLine = arcMove.SourceLine, IsBeamOn = arcMove.IsBeamOn, LineColor = arcMove.LineColor };
                 }
-
             }
 
             return entity;
@@ -502,7 +505,6 @@ namespace ParserLib.Services.Parsers
             }
 
             return new Point3D(0, 0, 0);
-
         }
 
         private double Converter(double value)
@@ -512,7 +514,7 @@ namespace ParserLib.Services.Parsers
 
         private double Converter(string value)
         {
-            if (value.IndexOfAny(mathSymbols,1)!=-1) 
+            if (value.IndexOfAny(mathSymbols, 1) != -1)
             {
                 var eval = StringToFormula.Eval(value);
                 return Converter(eval);
@@ -554,7 +556,6 @@ namespace ParserLib.Services.Parsers
             }
             else if (line.StartsWith("$(HOLE)"))
             {
-
                 var macroParFounded = MacroParsRegex.Matches(line);
 
                 var cX = Converter(macroParFounded[0].Value);
@@ -583,11 +584,9 @@ namespace ParserLib.Services.Parsers
 
                 var holeMacro = entity as ArcMove;
                 GeoHelper.GetMoveFromMacroHole(ref holeMacro);
-
             }
             else if (line.StartsWith("$(SLOT)"))
             {
-
                 var macroParFounded = MacroParsRegex.Matches(line);
 
                 var c1X = Converter(macroParFounded[0].Value);
@@ -607,10 +606,8 @@ namespace ParserLib.Services.Parsers
 
                 var radius = Converter(macroParFounded[9].Value);
 
-
                 entity = new SlotMove()
                 {
-
                     SourceLine = programContext.SourceLine,
                     IsBeamOn = programContext.IsBeamOn,
                     LineColor = programContext.ContourLineType,
@@ -653,16 +650,13 @@ namespace ParserLib.Services.Parsers
                         LineColor = programContext.ContourLineType,
                         OriginalLine = line,
                     }
-
                 };
 
                 var slotMove = entity as SlotMove;
                 GeoHelper.GetMovesFromMacroSlot(ref slotMove);
-
             }
             else if (line.StartsWith("$(POLY)"))
             {
-
                 var macroParFounded = MacroParsRegex.Matches(line);
 
                 var c1X = Converter(macroParFounded[0].Value);
@@ -695,16 +689,13 @@ namespace ParserLib.Services.Parsers
                     VertexPoint = vertexPoint,
                     NormalPoint = normalPoint,
                     CenterPoint = centerPoint
-
                 };
 
                 var polyMove = entity as PolyMoves;
                 GeoHelper.GetMovesFromMacroPoly(ref polyMove);
-
             }
             else if (line.StartsWith("$(RECT)"))
             {
-
                 var macroParFounded = MacroParsRegex.Matches(line);
 
                 var c1X = Converter(macroParFounded[0].Value);
@@ -735,7 +726,6 @@ namespace ParserLib.Services.Parsers
 
                 var rectMove = entity as RectMoves;
                 GeoHelper.GetMovesFromMacroRect(ref rectMove);
-
             }
             else if (line.StartsWith("$(WORK_TYPE)"))
             {
@@ -765,12 +755,9 @@ namespace ParserLib.Services.Parsers
             }
             else
             {
-
                 //var macroName = line.Substring(2, line.IndexOf(")") - 2).Trim();
                 //if (macroNotConverted.Add(macroName))
                 //{
-
-
                 //}
                 //Console.WriteLine(macroName);
             }
@@ -778,7 +765,6 @@ namespace ParserLib.Services.Parsers
 
         private string CleanLine(string lineToClean)
         {
-
             if (lineToClean.Contains("//") || lineToClean.Contains("(*"))
             {
                 int splitcomment = lineToClean.IndexOf("//") != -1 ? lineToClean.IndexOf("//") : lineToClean.IndexOf("(*") != -1 ? lineToClean.IndexOf("(*") : 0;
@@ -862,8 +848,6 @@ namespace ParserLib.Services.Parsers
 
             if (axValue.Contains("P") || axValue.Contains("LV"))
             {
-
-
             }
             return double.Parse(axValue);
         }
@@ -895,10 +879,8 @@ namespace ParserLib.Services.Parsers
                 {
                     if (key > _programEndAtLine) return;
 
-
                     try
                     {
-
                         var lineToClean = dic_LineNumber_Line[key];
                         var lineNumber = key;
 
@@ -909,12 +891,12 @@ namespace ParserLib.Services.Parsers
                             lock (dic)
                             {
                                 dic.Add(lineNumber, lineCleaned);
-
                             }
                             state.Break();
                         }
 
                         #region SubProgram
+
                         if (lineCleaned.StartsWith("Q"))
                         {
                             //Be Sure to take just the Q command and not comments or other stuff
@@ -925,16 +907,17 @@ namespace ParserLib.Services.Parsers
                             }
                             return;
                         }
-                        #endregion
+
+                        #endregion SubProgram
 
                         #region Handle GO
+
                         if (lineCleaned.StartsWith("GO"))
                         {
                             //    //Is not reading label but if it was reset to it
                             //    readingLabel = false;
                             //    //Need to search the label xx in the GOxx
                             //    jumpingIntoLabel = true;
-
 
                             //    lineCleaned = lineCleaned.Replace(" ", "");
 
@@ -985,7 +968,6 @@ namespace ParserLib.Services.Parsers
                             //        }
                             //    }
 
-
                             //    return;
                         }
 
@@ -1001,9 +983,11 @@ namespace ParserLib.Services.Parsers
                         //        lstLabelOperations.Add(lineCleaned);
                         //    }
                         //}
-                        #endregion
+
+                        #endregion Handle GO
 
                         #region Handle Variables
+
                         if ((lineCleaned.StartsWith("P") || lineCleaned.StartsWith("LV")) && lineCleaned.Contains("=") && lineCleaned.Contains("$S25") == false)
                         {
                             lineCleaned = lineCleaned.Replace(" =", "=").Replace("= ", "=").Replace(" = ", "=");
@@ -1028,7 +1012,8 @@ namespace ParserLib.Services.Parsers
                         {
                             return;
                         }
-                        #endregion
+
+                        #endregion Handle Variables
 
                         #region Handle line that use variables
 
@@ -1041,7 +1026,8 @@ namespace ParserLib.Services.Parsers
                                 lineCleaned = lineCleaned.Replace(item.ToString(), dicVariables[item.ToString()]);
                             }
                         }
-                        #endregion
+
+                        #endregion Handle line that use variables
 
                         lock (dic)
                         {
@@ -1049,24 +1035,23 @@ namespace ParserLib.Services.Parsers
                             dic.Add(lineNumber, lineCleaned);
                         }
 
-
                         //}
                         //else { Console.WriteLine($"{lineToClean}"); }
                     }
                     catch (Exception ex)
                     {
-
                         throw ex;
                     }
                 });
 
                 return new SortedDictionary<int, string>(dic);
+
                 #region Commented
+
                 //foreach (var lineToClean in lines)
                 //{
                 //    try
                 //    {
-
                 //        lineNumber += 1;
 
                 //        if (lineToClean.StartsWith(";") || lineToClean.StartsWith("(*") || lineToClean.StartsWith("//") || string.IsNullOrEmpty(lineToClean) || string.IsNullOrWhiteSpace(lineToClean))
@@ -1087,7 +1072,6 @@ namespace ParserLib.Services.Parsers
                 //            || lineToClean.StartsWith("$(CIRCLE") || lineToClean.StartsWith("$(KEYHOLE") || lineToClean.StartsWith("$(MARKING") || lineToClean.StartsWith("$(END_MARKING")
                 //            || lineToClean.StartsWith("$(POLY") || lineToClean.StartsWith("$(SQUARE"))
                 //        {
-
                 //            var lineCleaned = CleanLine(lineToClean);
 
                 //            if (lineCleaned.StartsWith("M30")) break;
@@ -1123,7 +1107,6 @@ namespace ParserLib.Services.Parsers
                 //                readingLabel = false;
                 //                //Need to search the label xx in the GOxx
                 //                jumpingIntoLabel = true;
-
 
                 //                lineCleaned = lineCleaned.Replace(" ", "");
 
@@ -1163,7 +1146,6 @@ namespace ParserLib.Services.Parsers
                 //                    lstLabelOperations = new List<string>();
 
                 //                dicOperationsInLabel.Add(labelFounded, lstLabelOperations);
-
 
                 //                continue;
                 //            }
@@ -1217,7 +1199,6 @@ namespace ParserLib.Services.Parsers
                 //            lstMoves.Add(new Tuple<int, string>(lineNumber, lineCleaned));
                 //        }
 
-
                 //    }
                 //    catch (Exception ex)
                 //    {
@@ -1226,8 +1207,8 @@ namespace ParserLib.Services.Parsers
                 //}
 
                 //});
-                #endregion
 
+                #endregion Commented
             }
             catch (Exception ex)
             {
@@ -1254,7 +1235,6 @@ namespace ParserLib.Services.Parsers
             using (var fileStream = File.OpenRead(Filename))
             using (var streamReader = new StreamReader(fileStream, System.Text.Encoding.UTF8, true, BufferSize))
             {
-
                 string line;
                 int lineNumberFromReadedFile = 0;
                 int indexOfCleanedLines = 0;
@@ -1268,7 +1248,6 @@ namespace ParserLib.Services.Parsers
                     }
 
                     line = line.TrimStart().ToUpper();
-
 
                     if (
                         //line.StartsWith("//",true,System.Globalization.CultureInfo.CurrentCulture) ||
@@ -1311,8 +1290,5 @@ namespace ParserLib.Services.Parsers
             Console.WriteLine($"{Filename} First reading of the file: {dt.ElapsedMilliseconds} ms");
             return dic;
         }
-
     }
-
-
 }

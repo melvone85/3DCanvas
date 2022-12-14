@@ -26,7 +26,7 @@ namespace Canvas3DViewer
     /// </summary>
     public partial class Window1 : Window
     {
-        List<IBaseEntity> moves;
+        private List<IBaseEntity> moves;
         public string Filename { get; set; }
 
         private Point previousCoordinate;
@@ -44,8 +44,6 @@ namespace Canvas3DViewer
 
         private void DrawProgram(string fullName)
         {
-
-
             //Stopwatch ost = new Stopwatch();
 
             //st.Start();
@@ -117,20 +115,17 @@ namespace Canvas3DViewer
                                 DrawLine(l as LinearMove);
                             }
                         }
-
                     }
                 }
-st.Stop();
+                st.Stop();
                 InitialTransform();
-                
+
                 Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {st.ElapsedMilliseconds} ms");
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
-
-           
         }
 
         private void DrawArc(ArcMove arcMove)
@@ -149,7 +144,7 @@ st.Stop();
             //BindingBase destinationBindingIsLargeArc = new Binding { Source = arcMove, Path = new PropertyPath("IsLargeArc") };
             //BindingBase destinationBindingIsStroked = new Binding { Source = arcMove, Path = new PropertyPath("IsStroked") };
             //BindingBase destinationBindingSweepDirection = new Binding { Source = arcMove, Path = new PropertyPath("ArcSweepDirection") };
-            
+
             BindingOperations.SetBinding(ls, ArcSegment.PointProperty, new Binding { Source = arcMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion });
             BindingOperations.SetBinding(ls, ArcSegment.SizeProperty, new Binding { Source = arcMove, Path = new PropertyPath("ArcSize") });
             BindingOperations.SetBinding(ls, ArcSegment.RotationAngleProperty, new Binding { Source = arcMove, Path = new PropertyPath("RotationAngle") });
@@ -193,7 +188,6 @@ st.Stop();
 
             geometry.Figures.Add(pf);
 
-
             Path p = new Path();
             p.StrokeThickness = 1;
 
@@ -228,6 +222,7 @@ st.Stop();
         private void InitialTransform()
         {
             #region Top View of the drawing
+
             Matrix3D U = Matrix3D.Identity;
             Matrix3D Un = Matrix3D.Identity;
             Point3D cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
@@ -239,7 +234,9 @@ st.Stop();
             {
                 item.Render(U, Un, false, 1);
             }
-            #endregion 
+            #endregion Top View of the drawing
+
+
 
             #region Shift Drawing in the center of the canvas
 
@@ -260,7 +257,6 @@ st.Stop();
                 yMin = Math.Min(entity.BoundingBox.Item3, yMin);
                 yMax = Math.Max(entity.BoundingBox.Item4, yMax);
             }
-
 
             double xMed = (xMax + xMin) / 2;
             double yMed = (yMax + yMin) / 2;
@@ -286,9 +282,11 @@ st.Stop();
             {
                 item.Render(U, Un, false, 1);
             }
-            #endregion
+
+            #endregion Shift Drawing in the center of the canvas
 
             #region Zoom drawing into Canvas
+
             U.SetIdentity();
             Un.SetIdentity();
 
@@ -304,8 +302,8 @@ st.Stop();
             {
                 item.Render(U, Un, false, newZ);
             }
-            #endregion
 
+            #endregion Zoom drawing into Canvas
         }
 
         private SolidColorBrush GetLineColor(ELineType lineColor)
@@ -314,23 +312,29 @@ st.Stop();
             {
                 case ELineType.CutLine1:
                     return Brushes.Green;
+
                 case ELineType.CutLine2:
                     return Brushes.RoyalBlue;
+
                 case ELineType.CutLine3:
                     return Brushes.Red;
+
                 case ELineType.CutLine4:
                     return Brushes.Violet;
+
                 case ELineType.CutLine5:
                     return Brushes.Aqua;
+
                 case ELineType.Marking:
                     return Brushes.Yellow;
+
                 case ELineType.Microwelding:
                 case ELineType.Rapid:
                     return Brushes.Gray;
+
                 default:
                     return Brushes.White;
             }
-
         }
 
         private void MouseClickEntity(object sender, MouseButtonEventArgs e)
@@ -340,7 +344,6 @@ st.Stop();
             if (p.Tag != null && p.Tag is IEntity)
             {
                 var entity = (p.Tag as IEntity);
-
 
                 txtLine.Text = entity.OriginalLine.ToString();
                 txtLineNumber.Text = $"Source line: {entity.SourceLine.ToString()}";
@@ -357,9 +360,6 @@ st.Stop();
                     txtVP.Visibility = Visibility.Collapsed;
                 }
                 txtEP.Text = CreateStringPoint(entity.EndPoint, "End p:");
-
-
-
             }
         }
 
@@ -389,11 +389,9 @@ st.Stop();
 
             if (e.LeftButton == MouseButtonState.Pressed)
             {
-
                 double rotSpeed = 200;
 
                 if (Keyboard.IsKeyDown(Key.LeftShift)) { rotSpeed = rotSpeed / 100; }
-
 
                 double vX = (Mouse.GetPosition(canvas1).Y - previousCoordinate.Y) / canvas1.ActualHeight;
                 double vY = (Mouse.GetPosition(canvas1).X - previousCoordinate.X) / canvas1.ActualWidth;
@@ -407,7 +405,6 @@ st.Stop();
 
                 if (vQ.Length != 0)
                 {
-
                     Quaternion Q = new Quaternion(vQ, qRotAngle);
 
                     U.RotateAt(Q, centerRotation);
@@ -505,9 +502,7 @@ st.Stop();
                     sb.AppendFormat("\"{0}\" -n{1}", nppReadmePath, line);
                     Process.Start(nppExePath, sb.ToString());
                 }
-
             }
         }
-
     }
 }

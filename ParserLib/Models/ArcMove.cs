@@ -1,5 +1,4 @@
-﻿using ParserLib.Interfaces;
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
@@ -7,32 +6,14 @@ using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Models
 {
-    public class ArcMove : Entity, IArc
+    public class ArcMove : CircularEntity
     {
-        public double RotationAngle { get; set; }
         private double strokeThickness = 1;
         private double degreeToRad = Math.PI / 180;
-        public bool IsLargeArc { get; set; }
-
-        private Vector VectorForRotationAngleCalculation = new Vector(1, 0);
         private Vector3D vpn = new Vector3D(0, 0, 1);
-        public Point3D ViaPoint { get; set; }
-        public Size ArcSize { get; set; }
-        public SweepDirection ArcSweepDirection { get; set; }
+        private Vector VectorForRotationAngleCalculation = new Vector(1, 0);
 
         public override EEntityType EntityType { get => EEntityType.Arc; }
-
-        public bool IsStroked { get; set; }
-
-        public bool IsRotating { get; set; }
-
-        public double Radius { get; set; }// raggio della circonferenza a cui appartiene l'arco di circonferenza
-
-        public Vector3D Normal { get; set; }// vettore normale al piano su cui giace l'arco di circonferenze
-
-        public Point3D NormalPoint { get; set; }
-
-        public Point3D CenterPoint { get; set; }
 
         public override void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {
@@ -48,7 +29,6 @@ namespace ParserLib.Models
 
             Vector3D intersection = Vector3D.CrossProduct(vpn, Normal);
             intersection = Vector3D.Multiply(1 / intersection.Length, intersection);
-
 
             double e = Radius * degreeToRad * Math.Abs(angleBetweenNormalAndViewPlaneNormal - 90);
             RotationAngle = -Vector.AngleBetween(new Vector(intersection.X, intersection.Y), VectorForRotationAngleCalculation);
@@ -82,7 +62,6 @@ namespace ParserLib.Models
 
                 Point3D revCenterPoint = new Point3D(-CenterPoint.X, -CenterPoint.Y, -CenterPoint.Z);
                 revCenterPoint = new Point3D(Vector3D.DotProduct((Vector3D)revCenterPoint, vX), Vector3D.DotProduct((Vector3D)revCenterPoint, vY), Vector3D.DotProduct((Vector3D)revCenterPoint, vZ));
-
 
                 SP = (Point3D)Point3D.Subtract(SP, CenterPoint);
                 SP = new Point3D(Vector3D.DotProduct((Vector3D)SP, vX), Vector3D.DotProduct((Vector3D)SP, vY), Vector3D.DotProduct((Vector3D)SP, vZ));
@@ -141,11 +120,9 @@ namespace ParserLib.Models
                 StartPoint = StartPointDump;
                 EndPoint = EndPointDump;
                 IsLargeArc = IsLargeDump;
-
             }
             else
             {
-
                 ArcSize = new Size(Radius, Math.Abs(Radius * Math.Cos(angleBetweenNormalAndViewPlaneNormal * degreeToRad)));
                 ArcSweepDirection = Normal.Z >= 0 ? SweepDirection.Clockwise : SweepDirection.Counterclockwise;
 
@@ -155,17 +132,12 @@ namespace ParserLib.Models
                 OnPropertyChanged("ArcSize");
                 OnPropertyChanged("ArcSweepDirection");
                 OnPropertyChanged("IsLargeArc");
-
-
             }
-
-
-
         }
 
         public override string ToString()
         {
-            return $"Arc sp: {StartPoint} vp: {ViaPoint} ep: {EndPoint}"; 
+            return $"Arc sp: {StartPoint} vp: {ViaPoint} ep: {EndPoint}";
         }
     }
 }

@@ -1,19 +1,16 @@
 ﻿using ParserLib.Helpers;
 using ParserLib.Interfaces;
 using System;
-using System.Windows;
 using System.Windows.Media.Media3D;
 
 namespace ParserLib.Models
 {
     public class SlotMove : Entity, ISlot
     {
-        public IArc Arc1 { get; set; }
-        public IArc Arc2 { get; set; }
+        public CircularEntity Arc1 { get; set; }
+        public CircularEntity Arc2 { get; set; }
         public Entity Line1 { get; set; }
         public Entity Line2 { get; set; }
-
-        public override TechnoHelper.EEntityType EntityType => TechnoHelper.EEntityType.Slot;
 
         public override Tuple<double, double, double, double> BoundingBox
         {
@@ -45,8 +42,9 @@ namespace ParserLib.Models
                 yMax = Math.Max(Line2.GeometryPath.Bounds.Top, yMax);
                 return new Tuple<double, double, double, double>(xMin, xMax, yMin, yMax);
             }
-
         }
+
+        public override TechnoHelper.EEntityType EntityType => TechnoHelper.EEntityType.Slot;
 
         public override void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {
