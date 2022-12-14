@@ -75,7 +75,7 @@ namespace ParserLib.Services.Parsers
 
         private Dictionary<int, string> ReadAndFilterLinesFromFile()
         {
-            Stopwatch dt = Stopwatch.StartNew();
+            var startT = Stopwatch.StartNew();
 
             Dictionary<string, string> dicVariables = new Dictionary<string, string>();
             Dictionary<int, string> dic = new Dictionary<int, string>();
@@ -126,8 +126,8 @@ namespace ParserLib.Services.Parsers
             }
             finally
             {
-                dt.Stop();
-                Console.WriteLine($"{Filename} ReadAndFilterLinesFromFile reading of the file: {dt.ElapsedMilliseconds} ms");
+                startT.Stop();
+                Console.WriteLine($"{Filename} ReadAndFilterLinesFromFile reading of the file: {startT.Elapsed}");
             }
 
             return dic;
