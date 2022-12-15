@@ -35,38 +35,40 @@ namespace ParserLib.Models
 
             if (e < strokeThickness / 2)
             {
-                Point3D StartPointDump = StartPoint;
-                Point3D EndPointDump = EndPoint;
-                bool IsLargeDump = IsLargeArc;
+                Point3D StartPointDump = new Point3D(StartPoint.X, StartPoint.Y, StartPoint.Z);
+                Point3D EndPointDump = new Point3D(EndPoint.X, EndPoint.Y, EndPoint.Z);
 
-                Point3D SP = StartPoint;
-                Point3D EP = EndPoint;
+                Point3D SP = new Point3D(StartPoint.X, StartPoint.Y, StartPoint.Z);
+                Point3D EP = new Point3D(EndPoint.X, EndPoint.Y, EndPoint.Z);
+
+                bool IsLargeDump = IsLargeArc;
 
                 Vector3D vZ = Normal;
                 Vector3D vY = intersection;
                 Vector3D vX = Vector3D.CrossProduct(Normal, intersection);
-                vX = Vector3D.Multiply(1 / vX.Length, vX);
+                vX = Vector3DMultiply(vX);
 
                 Point3D Px = new Point3D(1, 0, 0);
                 Point3D Py = new Point3D(0, 1, 0);
                 Point3D Pz = new Point3D(0, 0, 1);
 
-                Px = (Point3D)Point3D.Subtract(Px, CenterPoint);
-                Px = new Point3D(Vector3D.DotProduct((Vector3D)Px, vX), Vector3D.DotProduct((Vector3D)Px, vY), Vector3D.DotProduct((Vector3D)Px, vZ));
-
-                Py = (Point3D)Point3D.Subtract(Py, CenterPoint);
-                Py = new Point3D(Vector3D.DotProduct((Vector3D)Py, vX), Vector3D.DotProduct((Vector3D)Py, vY), Vector3D.DotProduct((Vector3D)Py, vZ));
-
-                Pz = (Point3D)Point3D.Subtract(Pz, CenterPoint);
-                Pz = new Point3D(Vector3D.DotProduct((Vector3D)Pz, vX), Vector3D.DotProduct((Vector3D)Pz, vY), Vector3D.DotProduct((Vector3D)Pz, vZ));
-
                 Point3D revCenterPoint = new Point3D(-CenterPoint.X, -CenterPoint.Y, -CenterPoint.Z);
-                revCenterPoint = new Point3D(Vector3D.DotProduct((Vector3D)revCenterPoint, vX), Vector3D.DotProduct((Vector3D)revCenterPoint, vY), Vector3D.DotProduct((Vector3D)revCenterPoint, vZ));
+                revCenterPoint = Point3DDotProduct(revCenterPoint, vX, vY, vZ);
 
-                SP = (Point3D)Point3D.Subtract(SP, CenterPoint);
-                SP = new Point3D(Vector3D.DotProduct((Vector3D)SP, vX), Vector3D.DotProduct((Vector3D)SP, vY), Vector3D.DotProduct((Vector3D)SP, vZ));
-                EP = (Point3D)Point3D.Subtract(EP, CenterPoint);
-                EP = new Point3D(Vector3D.DotProduct((Vector3D)EP, vX), Vector3D.DotProduct((Vector3D)EP, vY), Vector3D.DotProduct((Vector3D)EP, vZ));
+                Px = Point3DSubtract(Px, CenterPoint);
+                Px = Point3DDotProduct(Px, vX, vY, vZ);
+
+                Py = Point3DSubtract(Py, CenterPoint);
+                Py = Point3DDotProduct(Py, vX, vY, vZ);
+
+                Pz = Point3DSubtract(Pz, CenterPoint);
+                Pz = Point3DDotProduct(Pz, vX, vY, vZ);
+
+                SP = Point3DSubtract(SP, CenterPoint);
+                SP = Point3DDotProduct(SP, vX, vY, vZ);
+
+                EP = Point3DSubtract(EP, CenterPoint);
+                EP = Point3DDotProduct(EP, vX, vY, vZ);
 
                 double SP_ang = Math.Atan2(SP.Y, SP.X);
                 double EP_ang = Math.Atan2(EP.Y, EP.X);
@@ -88,34 +90,26 @@ namespace ParserLib.Models
                 EP = new Point3D(0, maxY, 0);
 
                 Vector3D vX_ = Point3D.Subtract(Px, revCenterPoint);
-                vX_ = Vector3D.Multiply(1 / vX_.Length, vX_);
+                vX_ = Vector3DMultiply(vX_);
 
                 Vector3D vY_ = Point3D.Subtract(Py, revCenterPoint);
-                vY_ = Vector3D.Multiply(1 / vY_.Length, vY_);
+                vY_ = Vector3DMultiply(vY_);
 
                 Vector3D vZ_ = Point3D.Subtract(Pz, revCenterPoint);
-                vZ_ = Vector3D.Multiply(1 / vZ_.Length, vZ_);
+                vZ_ = Vector3DMultiply(vZ_);
 
-                double A1 = Vector3D.AngleBetween(vX_, vY_);
+                SP = Point3DSubtract(SP, revCenterPoint);
+                SP = Point3DDotProduct(SP, vX_, vY_, vZ_);
 
-                SP = (Point3D)Point3D.Subtract(SP, revCenterPoint);
-                SP = new Point3D(Vector3D.DotProduct((Vector3D)SP, vX_), Vector3D.DotProduct((Vector3D)SP, vY_), Vector3D.DotProduct((Vector3D)SP, vZ_));
-
-                EP = (Point3D)Point3D.Subtract(EP, revCenterPoint);
-                EP = new Point3D(Vector3D.DotProduct((Vector3D)EP, vX_), Vector3D.DotProduct((Vector3D)EP, vY_), Vector3D.DotProduct((Vector3D)EP, vZ_));
+                EP = Point3DSubtract(EP, revCenterPoint);
+                EP = Point3DDotProduct(EP, vX_, vY_, vZ_);
 
                 StartPoint = SP;
                 EndPoint = EP;
                 IsLargeArc = false;
                 ArcSize = new Size(1000, 1);
                 ArcSweepDirection = Normal.Z >= 0 ? SweepDirection.Clockwise : SweepDirection.Counterclockwise;
-
-                OnPropertyChanged("StartPoint");
-                OnPropertyChanged("EndPoint");
-                OnPropertyChanged("RotationAngle");
-                OnPropertyChanged("ArcSize");
-                OnPropertyChanged("ArcSweepDirection");
-                OnPropertyChanged("IsLargeArc");
+                RefreshArcProperties();
 
                 StartPoint = StartPointDump;
                 EndPoint = EndPointDump;
@@ -126,13 +120,33 @@ namespace ParserLib.Models
                 ArcSize = new Size(Radius, Math.Abs(Radius * Math.Cos(angleBetweenNormalAndViewPlaneNormal * degreeToRad)));
                 ArcSweepDirection = Normal.Z >= 0 ? SweepDirection.Clockwise : SweepDirection.Counterclockwise;
 
-                OnPropertyChanged("StartPoint");
-                OnPropertyChanged("EndPoint");
-                OnPropertyChanged("RotationAngle");
-                OnPropertyChanged("ArcSize");
-                OnPropertyChanged("ArcSweepDirection");
-                OnPropertyChanged("IsLargeArc");
+                RefreshArcProperties();
             }
+        }
+
+        private void RefreshArcProperties()
+        {
+            OnPropertyChanged("StartPoint");
+            OnPropertyChanged("EndPoint");
+            OnPropertyChanged("RotationAngle");
+            OnPropertyChanged("ArcSize");
+            OnPropertyChanged("ArcSweepDirection");
+            OnPropertyChanged("IsLargeArc");
+        }
+
+        private Vector3D Vector3DMultiply(Vector3D v)
+        {
+            return Vector3D.Multiply(1 / v.Length, v);
+        }
+
+        private Point3D Point3DDotProduct(Point3D p, Vector3D vX, Vector3D vY, Vector3D vZ)
+        {
+            return new Point3D(Vector3D.DotProduct((Vector3D)p, vX), Vector3D.DotProduct((Vector3D)p, vY), Vector3D.DotProduct((Vector3D)p, vZ));
+        }
+
+        private Point3D Point3DSubtract(Point3D p, Point3D pointCenter)
+        {
+            return (Point3D)Point3D.Subtract(p, pointCenter);
         }
 
         public override string ToString()

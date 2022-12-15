@@ -23,6 +23,52 @@ namespace ParserLib.Helpers
 
         }
 
+        public static void Add2DMoveProperties(ref ArcMove move, bool isClockwise)
+        {
+            var i = move.ViaPoint.X;
+            var j = move.ViaPoint.Y;
+            var k = move.ViaPoint.Z;
+
+            if (k == 0 && move.EndPoint.Z == 0) //pioano XY
+            {
+                move.Normal = new Vector3D(0, 0, 1);
+            }
+            if (i == 0 && move.EndPoint.X == 0)
+            {
+                move.Normal = new Vector3D(1, 0, 0);
+            }
+            if (j == 0 && move.EndPoint.Y == 0)
+            {
+                move.Normal = new Vector3D(0, 1, 0);
+            }
+
+            if (isClockwise == true)
+            {
+                move.Normal *= -1;
+            }
+
+            //only two of those are != 0
+            move.Radius = Math.Sqrt(Math.Pow(i, 2) + Math.Pow(j, 2) + Math.Pow(k, 2));
+            move.CenterPoint = new Point3D(move.StartPoint.X + i, move.StartPoint.Y + j, move.StartPoint.Z + k);
+            //Vector3D cSVector = Point3D.Subtract(move.StartPoint, move.CenterPoint);
+            //Vector3D cEVector = Point3D.Subtract(move.EndPoint, move.CenterPoint);
+            // var alpha = Vector3D.AngleBetween(cEVector, cSVector)/2;
+            //alpha = (Math.PI / 180) * alpha;
+            //cSVector.Normalize();
+            //Vector3D rotatedVector = Rotate_Rodriguez(cSVector, move.Normal, alpha);
+            //move.ViaPoint = Point3D.Add(move.CenterPoint, rotatedVector*move.Radius);
+            move.IsLargeArc = false;
+            move.IsStroked = true;
+
+        }
+
+        ///<summary>Rotate the first vector around te second vector by Alpha radiants.
+        ///Returns the rotated Vector</summary>
+        public static Vector3D Rotate_Rodriguez(Vector3D vectorToRotate, Vector3D pivotVector, double alpha)
+        {
+            Vector3D rotatedVector = vectorToRotate * Math.Cos(alpha) + Vector3D.CrossProduct(pivotVector, vectorToRotate) * Math.Sin(alpha) + pivotVector * (Vector3D.DotProduct(pivotVector, vectorToRotate) * (1 - Math.Cos(alpha)));
+            return rotatedVector;
+        }
 
         public static void AddCircularMoveProperties(ref ArcMove move)
         {
@@ -155,6 +201,47 @@ namespace ParserLib.Helpers
 
             slot.Line2.StartPoint = slot.Arc2.EndPoint;
             slot.Line2.EndPoint = slot.Arc1.StartPoint;
+        }
+
+        public static void GetMovesFromMacroKeyhole(ref KeyholeMoves keyhole)
+        {
+            var c1C2Vector = Point3D.Subtract(keyhole.Arc2.CenterPoint, keyhole.Arc1.CenterPoint);
+            var c2C1Vector = Point3D.Subtract(keyhole.Arc1.CenterPoint, keyhole.Arc2.CenterPoint);
+
+            keyhole.Arc1.NormalPoint = Point3D.Add(keyhole.Arc2.NormalPoint, c2C1Vector);
+            var normalVectorC1 = Point3D.Subtract(keyhole.Arc1.CenterPoint, keyhole.Arc1.NormalPoint);
+            var normalVectorC2 = Point3D.Subtract(keyhole.Arc2.CenterPoint, keyhole.Arc2.NormalPoint);
+            c1C2Vector.Normalize();
+            normalVectorC1.Normalize();
+            normalVectorC2.Normalize();
+
+            var d2 = Vector3D.CrossProduct(c2C1Vector, normalVectorC2);
+            d2.Normalize();
+            var p2 = Point3D.Subtract(keyhole.Arc1.CenterPoint, (keyhole.Arc1.Radius * d2));
+            var tmp = Math.Sqrt((keyhole.Arc1.Radius * keyhole.Arc1.Radius) - (keyhole.Arc2.Radius * keyhole.Arc2.Radius));
+
+            var p3 = Point3D.Subtract((keyhole.Arc1.CenterPoint + (c1C2Vector * tmp)), (keyhole.Arc2.Radius * d2));
+            var p4 = Point3D.Subtract(keyhole.Arc2.CenterPoint, (keyhole.Arc2.Radius * d2));
+            var p5 = Point3D.Add(keyhole.Arc2.CenterPoint, (keyhole.Arc2.Radius * c1C2Vector));
+            var p6 = Point3D.Add(keyhole.Arc2.CenterPoint, (keyhole.Arc2.Radius * d2));
+            var p7 = Point3D.Add(p3, (2 * keyhole.Arc2.Radius * d2));
+
+            keyhole.Arc1.StartPoint = p7;
+            keyhole.Arc1.EndPoint = p3;
+            keyhole.Arc1.ViaPoint = p2;
+            keyhole.Arc1.Normal = normalVectorC1;
+
+            keyhole.Line1.StartPoint = p3;
+            keyhole.Line1.EndPoint = p4;
+
+            keyhole.Arc2.StartPoint = p4;
+            keyhole.Arc2.EndPoint = p6;
+            keyhole.Arc2.ViaPoint = p5;
+            keyhole.Arc2.Normal = normalVectorC2;
+
+            keyhole.Line2.StartPoint = p6;
+            keyhole.Line2.EndPoint = p7;
+
         }
 
         public static void GetMovesFromMacroPoly(ref PolyMoves poly)

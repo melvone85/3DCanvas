@@ -22,7 +22,8 @@
             Slot,
             Rapid,
             Poly,
-            Rect
+            Rect,
+            Keyhole
         }
     }
 }

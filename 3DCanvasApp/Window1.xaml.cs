@@ -97,6 +97,15 @@ namespace Canvas3DViewer
                             DrawArc(slot.Arc2 as ArcMove);
                             DrawLine(slot.Line2 as LinearMove);
                         }
+                        else if (item.EntityType == EEntityType.Keyhole)
+                        {
+                            var keyhole = item as KeyholeMoves;
+
+                            DrawArc(keyhole.Arc1 as ArcMove);
+                            DrawLine(keyhole.Line1 as LinearMove);
+                            DrawArc(keyhole.Arc2 as ArcMove);
+                            DrawLine(keyhole.Line2 as LinearMove);
+                        }
                         else if (item.EntityType == EEntityType.Poly)
                         {
                             var poly = item as PolyMoves;

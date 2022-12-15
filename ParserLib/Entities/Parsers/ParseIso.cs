@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Web.Services.Description;
 using System.Windows.Media.Media3D;
 using static ParserLib.Helpers.GeoHelper;
 using static ParserLib.Helpers.TechnoHelper;
@@ -25,6 +26,8 @@ namespace ParserLib.Services.Parsers
         private Dictionary<string, List<Tuple<int, string>>> _dicSubprograms;
         private static int _indexOfM30;
         private static int _programEndAtLine = 0;
+
+        //private string GcodeAxesQuotaPattern = @"[A-Za-z]+\=?[A-Za-z]*[+-]?\d*\.?\d*([+-]?[*:]?[A-Za-z]*[+-]?\d*\.?\d*)+\b";
         private string GcodeAxesQuotaPattern = @"[A-Za-z]+\=?[A-Za-z]*[+-]?\d*\.?\d*([+-]?[*:]?[A-Za-z]*[+-]?\d*\.?\d*)+\b";
         private string VariableDeclarationPattern = @"\b[A-Za-z]+[\d]+([\=]?[A-Za-z]*[+-]?[*:]?\d*\.?\d*)+\b";
         private string macroParsPattern = @"([+-]?[*:]?\d+\.?\d*)+";
@@ -308,6 +311,8 @@ namespace ParserLib.Services.Parsers
                     programContext.LastHeadPosition = (baseEntity as SlotMove).Line2.EndPoint;
                 else if (baseEntity.EntityType == EEntityType.Poly)
                     programContext.LastHeadPosition = (baseEntity as PolyMoves).Lines.Last().EndPoint;
+                else if (baseEntity.EntityType == EEntityType.Keyhole)
+                    programContext.LastHeadPosition = (baseEntity as KeyholeMoves).Line2.EndPoint;
                 else
                     programContext.LastHeadPosition = (baseEntity as Entity).EndPoint;
 
@@ -346,7 +351,7 @@ namespace ParserLib.Services.Parsers
 
                     if (line[0] == 'N')
                     {
-                        var n = GcodeAxesQuotaRegex.Match(line).Value;
+                        var n = SubCallRegex.Match(line).Value;
                         lstSubInstructions = new List<Tuple<int, string>>();
                         _dicSubprograms.Add(n, lstSubInstructions);
                         readingSub = true;
@@ -372,11 +377,28 @@ namespace ParserLib.Services.Parsers
 
         private void ParseGLine(string line, ref ProgramContext programContext, ref IBaseEntity entity)
         {
-            //if (line.StartsWith("G00 Z=P1") && programContext.Is2DProgram)
-            //{
-            //    return;
-            //}
 
+            var code = line.Substring(0, 3);
+            if (code == "G90" || code == "G91" || code == "G70" || code == "G71")
+            {
+
+                if (code == "G70" || code == "G71")
+                {
+                    _conversionValue = code == "G70" ? 25.4 : 1;
+                    programContext.IsInchProgram = _conversionValue == 25.4;
+                }
+
+                if (code == "G90" || code == "G91")
+                {
+                    programContext.IsIncremental = code == "G91";
+                }
+                return;
+            }
+
+
+
+            //if (line.StartsWith("G01") || line.StartsWith("G00") || line.StartsWith("G02") || line.StartsWith("G03") || line.StartsWith("G103") || line.StartsWith("G102") || line.StartsWith("G104"))
+            //{
             var m = GcodeAxesQuotaRegex.Matches(line);
 
             if (m[0].Value.Length > 1)
@@ -387,21 +409,22 @@ namespace ParserLib.Services.Parsers
                 {
                     case 0:
                     case 1:
-                        if (m.Count == 1) return;
+                        //if (m.Count == 1) return;
                         entity = new LinearMove { OriginalLine = line };
                         entity = CalculateStartAndEndPoint(programContext, entity, m);
 
                         break;
 
-                    case 70:
-                    case 71:
-                        _conversionValue = gCodeNumber == 70 ? 25.4 : 1;
-                        programContext.IsInchProgram = gCodeNumber == 70;
+                    case 2:
+                        // clockwise turn
+                        // g02 Xend yEnd zEnd I J K center relative to startpoint
+                        entity = new ArcMove { OriginalLine = line };
+                        entity = CalculateG02G03(programContext, entity, m, true);
                         break;
 
-                    case 2:
                     case 3:
-
+                        entity = new ArcMove { OriginalLine = line };
+                        entity = CalculateG02G03(programContext, entity, m, false);
                         break;
 
                     case 92:
@@ -423,13 +446,7 @@ namespace ParserLib.Services.Parsers
 
                         break;
 
-                    case 90:
-                        programContext.IsIncremental = false;
-                        break;
 
-                    case 91:
-                        programContext.IsIncremental = true;
-                        break;
 
                     case 100:
                         break;
@@ -446,13 +463,25 @@ namespace ParserLib.Services.Parsers
                     default:
                         break;
                 }
-
-                //if (entity != null)
-                //{
-                //    entity.Is2DProgram = programContext.Is2DProgram;
-                //    programContext.LastEntity = (entity as IEntity);
-                //}
             }
+            //}
+        }
+
+        private IBaseEntity CalculateG02G03(ProgramContext programContext, IBaseEntity entity, MatchCollection regexMatches, bool isClockwise)
+        {
+            entity.SourceLine = programContext.SourceLine;
+            entity.IsBeamOn = programContext.IsBeamOn;
+            entity.LineColor = programContext.ContourLineType;
+            ArcMove e = (entity as ArcMove);
+            e.StartPoint = Create3DPoint(programContext, programContext.LastEntity.EndPoint);
+            BuildMove(ref entity, regexMatches, programContext);
+            e.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, (entity as IEntity).EndPoint, programContext.IsIncremental ? programContext.LastEntity.EndPoint : new Point3D(0, 0, 0));
+            GeoHelper.Add2DMoveProperties(ref e, isClockwise);
+            Console.WriteLine(e.ToString());
+            Console.WriteLine(e.CenterPoint.ToString());
+
+
+            return e;
         }
 
         private IBaseEntity CalculateStartAndEndPoint(ProgramContext programContext, IBaseEntity entity, MatchCollection regexMatches)
@@ -655,6 +684,88 @@ namespace ParserLib.Services.Parsers
                 var slotMove = entity as SlotMove;
                 GeoHelper.GetMovesFromMacroSlot(ref slotMove);
             }
+
+
+            else if (line.StartsWith("$(KEYHOLE)"))
+            {
+
+                var macroParFounded = MacroParsRegex.Matches(line);
+
+                var c1X = Converter(macroParFounded[0].Value);
+                var c1Y = Converter(macroParFounded[1].Value);
+                var c1Z = Converter(macroParFounded[2].Value);
+                Point3D pC1 = new Point3D(c1X, c1Y, c1Z);
+
+                var c2X = Converter(macroParFounded[3].Value);
+                var c2Y = Converter(macroParFounded[4].Value);
+                var c2Z = Converter(macroParFounded[5].Value);
+                Point3D pC2 = new Point3D(c2X, c2Y, c2Z);
+
+                var nX = Converter(macroParFounded[6].Value);
+                var nY = Converter(macroParFounded[7].Value);
+                var nZ = Converter(macroParFounded[8].Value);
+                Point3D pN = new Point3D(nX, nY, nZ);
+
+                var radius1 = Converter(macroParFounded[9].Value);
+                var radius2 = Converter(macroParFounded[10].Value);
+
+
+                entity = new KeyholeMoves()
+                {
+
+                    SourceLine = programContext.SourceLine,
+                    IsBeamOn = programContext.IsBeamOn,
+                    LineColor = programContext.ContourLineType,
+                    OriginalLine = line,
+                    Arc1 = new ArcMove
+                    {
+                        SourceLine = programContext.SourceLine,
+                        IsBeamOn = programContext.IsBeamOn,
+                        LineColor = programContext.ContourLineType,
+                        OriginalLine = line,
+                        IsStroked = true,
+                        IsLargeArc = true,
+                        Radius = Math.Abs(radius1),
+                        CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC1),
+                        NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                    },
+                    Arc2 = new ArcMove
+                    {
+                        SourceLine = programContext.SourceLine,
+                        IsBeamOn = programContext.IsBeamOn,
+                        LineColor = programContext.ContourLineType,
+                        OriginalLine = line,
+                        IsStroked = true,
+                        IsLargeArc = true,
+                        Radius = Math.Abs(radius2),
+                        CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC2),
+                        NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                    },
+
+                    Line1 = new LinearMove()
+                    {
+                        SourceLine = programContext.SourceLine,
+                        IsBeamOn = programContext.IsBeamOn,
+                        LineColor = programContext.ContourLineType,
+                        OriginalLine = line,
+                    },
+                    Line2 = new LinearMove()
+                    {
+                        SourceLine = programContext.SourceLine,
+                        IsBeamOn = programContext.IsBeamOn,
+                        LineColor = programContext.ContourLineType,
+                        OriginalLine = line,
+                    }
+
+                };
+
+
+                var keyholeMove = entity as KeyholeMoves;
+                GeoHelper.GetMovesFromMacroKeyhole(ref keyholeMove);
+
+            }
+
+
             else if (line.StartsWith("$(POLY)"))
             {
                 var macroParFounded = MacroParsRegex.Matches(line);
@@ -784,14 +895,16 @@ namespace ParserLib.Services.Parsers
         {
             var endPoint = new Point3D(0, 0, 0);
             var viaPoint = new Point3D(0, 0, 0);
-
-            for (int i = 1; i < matches.Count; i++)
+            var axisArray = new char[] { 'X', 'Y', 'Z', 'I', 'J', 'K' };
+            var n = matches.Count;
+            for (int i = 1; i < n; i++)
             {
                 var ax = matches[i].ToString();
 
-                var axName = ax[0];
+                char axName = ax[0];
 
-                if (axName != 'X' && axName != 'Y' && axName != 'Z' && axName != 'I' && axName != 'J' && axName != 'K') continue;
+                if (Array.IndexOf(axisArray, axName) == -1) continue;
+                //if (axName != 'X' && axName != 'Y' && axName != 'Z' && axName != 'I' && axName != 'J' && axName != 'K') continue;
 
                 var axValue = ax.Substring(1);
 
@@ -808,6 +921,30 @@ namespace ParserLib.Services.Parsers
                 else if (axName == 'I') viaPoint.X = axValueD;
                 else if (axName == 'J') viaPoint.Y = axValueD;
                 else if (axName == 'K') viaPoint.Z = programContext.Is2DProgram ? 0.0 : axValueD;
+
+                //Un modo per ottimizzare questo codice potrebbe essere quello di utilizzare un dizionario per memorizzare le corrispondenze tra i valori di axName e i campi di endPoint e viaPoint, invece di utilizzare una serie di istruzioni if e else if.Ecco un esempio di come potrebbe essere implementato:
+
+                //var fieldMapping = new Dictionary<char, Func<Point3D, double, Point3D>>()
+                //    {
+                //        { 'X', (point, value) => { point.X = value; return point; } },
+                //        { 'Y', (point, value) => { point.Y = value; return point; } },
+                //        { 'Z', (point, value) => { point.Z = programContext.Is2DProgram ? 0.0 : value; return point; } },
+                //        { 'I', (point, value) => { point.X = value; return point; } },
+                //        { 'J', (point, value) => { point.Y = value; return point; } },
+                //        { 'K', (point, value) => { point.Z = programContext.Is2DProgram ? 0.0 : value; return point; } },
+                //    };
+
+                //if (fieldMapping.ContainsKey(axName))
+                //{
+                //    if (axName == 'X' || axName == 'Y' || axName == 'Z')
+                //    {
+                //        endPoint = fieldMapping[axName](endPoint, axValueD);
+                //    }
+                //    else
+                //    {
+                //        viaPoint = fieldMapping[axName](viaPoint, axValueD);
+                //    }
+                //}
             }
 
             (entity as IEntity).EndPoint = endPoint;
@@ -900,7 +1037,7 @@ namespace ParserLib.Services.Parsers
                         if (lineCleaned.StartsWith("Q"))
                         {
                             //Be Sure to take just the Q command and not comments or other stuff
-                            var q = GcodeAxesQuotaRegex.Match(lineCleaned).Value;
+                            var q = SubCallRegex.Match(lineCleaned).Value;
                             lock (dic)
                             {
                                 dic.Add(lineNumber, q);

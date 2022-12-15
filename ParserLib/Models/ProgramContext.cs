@@ -73,6 +73,15 @@ namespace ParserLib.Models
                     CalculateMinMaxFromBaseEntity(slot.Line1);
                     CalculateMinMaxFromBaseEntity(slot.Line2);
                 }
+                else if (LastEntity.EntityType == EEntityType.Keyhole)
+                {
+                    var keyHole = LastEntity as IKeyhole;
+
+                    CalculateMinMaxFromBaseEntity(keyHole.Arc1);
+                    CalculateMinMaxFromBaseEntity(keyHole.Arc2);
+                    CalculateMinMaxFromBaseEntity(keyHole.Line1);
+                    CalculateMinMaxFromBaseEntity(keyHole.Line2);
+                }
                 else
                 {
                     CalculateMinMaxFromBaseEntity(LastEntity);
