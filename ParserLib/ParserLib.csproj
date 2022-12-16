@@ -15,5 +15,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Globals\Globals.cs" />
+    <Compile Remove="Interfaces\Interface1.cs" />
   </ItemGroup>
 </Project>

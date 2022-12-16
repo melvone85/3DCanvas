@@ -492,7 +492,7 @@ namespace ParserLib.Services.Parsers
                     };
 
                     var holeMacro = entity as ArcMove;
-                    GeoHelper.GetMoveFromMacroHole(ref holeMacro);
+                    //GeoHelper.GetMoveFromMacroHole(ref holeMacro);
                     break;
                 case "P_SLOT":
                     macroParFounded = MacroParsRegex.Matches(line);
