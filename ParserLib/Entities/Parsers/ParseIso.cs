@@ -477,10 +477,6 @@ namespace ParserLib.Services.Parsers
             BuildMove(ref entity, regexMatches, programContext);
             e.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, (entity as IEntity).EndPoint, programContext.IsIncremental ? programContext.LastEntity.EndPoint : new Point3D(0, 0, 0));
             GeoHelper.Add2DMoveProperties(ref e, isClockwise);
-            Console.WriteLine(e.ToString());
-            Console.WriteLine(e.CenterPoint.ToString());
-
-
             return e;
         }
 
