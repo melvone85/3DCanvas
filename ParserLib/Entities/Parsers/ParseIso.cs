@@ -296,7 +296,7 @@ namespace ParserLib.Services.Parsers
             {
                 ParseMacro(lineString, ref programContext, ref baseEntity);
             }
-            else if (lineString.StartsWith("G"))
+            else if (lineString.StartsWith("G") && !lineString.ToUpper().Contains("O") )
             {
                 ParseGLine(lineString, ref programContext, ref baseEntity);
             }
@@ -522,7 +522,7 @@ namespace ParserLib.Services.Parsers
         {
             if (p3 != null)
             {
-                return new Point3D((p1.X + p2.X + p3.X), (p1.Y + p2.Y + p3.Y), programContext.Is2DProgram ? 0 : (p1.Z + p2.Z + p3.Z));
+                return new Point3D((p1.X + p2.X + p3.X), (p1.Y + p2.Y + p3.Y), (p1.Z + p2.Z + p3.Z));// programContext.Is2DProgram ? 0 : (p1.Z + p2.Z + p3.Z));
             }
             else if (p2 != null)
             {
