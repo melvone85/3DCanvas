@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media.Media3D;
 using ParserLib.Helpers;
+using System.Speech.Recognition.SrgsGrammar;
 
 namespace ParserLib.Helpers
 {
@@ -49,23 +50,36 @@ namespace ParserLib.Helpers
                 move.Normal *= -1;
             }
 
+
+
             //only two of those are != 0
             move.Radius = Math.Sqrt(Math.Pow(i, 2) + Math.Pow(j, 2) + Math.Pow(k, 2));
             move.CenterPoint = new Point3D(move.StartPoint.X + i, move.StartPoint.Y + j, move.StartPoint.Z + k);
-
             Vector3D cSVector = Point3D.Subtract(move.StartPoint, move.CenterPoint);
             Vector3D cEVector = Point3D.Subtract(move.EndPoint, move.CenterPoint);
-
-            //var alpha = Vector3D.AngleBetween(cEVector, cSVector) ;
-            //alpha = (Math.PI / 180) * alpha;
             cSVector.Normalize();
             cEVector.Normalize();
-            //Vector3D rotatedVector = MathHelpers.Rotate_Rodriguez(cSVector, move.Normal, alpha);
-            //move.ViaPoint = Point3D.Add(move.CenterPoint, rotatedVector * move.Radius);
 
-            move.IsLargeArc = MathHelpers.IsLargeAngle(cSVector, cEVector, move.Normal);
+            if (move.EndPoint == move.StartPoint)
+            {
+                //is a circle
+                double alpha = 0.01;
+                Vector3D rotatedVector = MathHelpers.Rotate_Rodriguez(cSVector, move.Normal, -alpha);
+                move.EndPoint = Point3D.Add(move.CenterPoint, rotatedVector * move.Radius);
+                move.IsLargeArc = true;
+            }
+            else
+            {
 
-            move.IsStroked = true;
+                //var alpha = Vector3D.AngleBetween(cEVector, cSVector) ;
+                //alpha = (Math.PI / 180) * alpha;
+                //Vector3D rotatedVector = MathHelpers.Rotate_Rodriguez(cSVector, move.Normal, alpha);
+                //move.ViaPoint = Point3D.Add(move.CenterPoint, rotatedVector * move.Radius);
+                move.IsLargeArc = MathHelpers.IsLargeAngle(cSVector, cEVector, move.Normal);
+                
+            }
+
+        move.IsStroked = true;
 
         }
 
