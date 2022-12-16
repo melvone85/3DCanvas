@@ -2,9 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media.Media3D;
+using ParserLib.Helpers;
 
 namespace ParserLib.Helpers
 {
@@ -50,25 +52,23 @@ namespace ParserLib.Helpers
             //only two of those are != 0
             move.Radius = Math.Sqrt(Math.Pow(i, 2) + Math.Pow(j, 2) + Math.Pow(k, 2));
             move.CenterPoint = new Point3D(move.StartPoint.X + i, move.StartPoint.Y + j, move.StartPoint.Z + k);
-            //Vector3D cSVector = Point3D.Subtract(move.StartPoint, move.CenterPoint);
-            //Vector3D cEVector = Point3D.Subtract(move.EndPoint, move.CenterPoint);
-            // var alpha = Vector3D.AngleBetween(cEVector, cSVector)/2;
+
+            Vector3D cSVector = Point3D.Subtract(move.StartPoint, move.CenterPoint);
+            Vector3D cEVector = Point3D.Subtract(move.EndPoint, move.CenterPoint);
+
+            //var alpha = Vector3D.AngleBetween(cEVector, cSVector) ;
             //alpha = (Math.PI / 180) * alpha;
-            //cSVector.Normalize();
-            //Vector3D rotatedVector = Rotate_Rodriguez(cSVector, move.Normal, alpha);
-            //move.ViaPoint = Point3D.Add(move.CenterPoint, rotatedVector*move.Radius);
-            move.IsLargeArc = false;
+            cSVector.Normalize();
+            cEVector.Normalize();
+            //Vector3D rotatedVector = MathHelpers.Rotate_Rodriguez(cSVector, move.Normal, alpha);
+            //move.ViaPoint = Point3D.Add(move.CenterPoint, rotatedVector * move.Radius);
+
+            move.IsLargeArc = MathHelpers.IsLargeAngle(cSVector, cEVector, move.Normal);
+
             move.IsStroked = true;
 
         }
 
-        ///<summary>Rotate the first vector around te second vector by Alpha radiants.
-        ///Returns the rotated Vector</summary>
-        public static Vector3D Rotate_Rodriguez(Vector3D vectorToRotate, Vector3D pivotVector, double alpha)
-        {
-            Vector3D rotatedVector = vectorToRotate * Math.Cos(alpha) + Vector3D.CrossProduct(pivotVector, vectorToRotate) * Math.Sin(alpha) + pivotVector * (Vector3D.DotProduct(pivotVector, vectorToRotate) * (1 - Math.Cos(alpha)));
-            return rotatedVector;
-        }
 
         public static void AddCircularMoveProperties(ref ArcMove move)
         {
