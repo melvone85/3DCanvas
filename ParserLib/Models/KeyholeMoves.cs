@@ -16,6 +16,7 @@ namespace ParserLib.Models
         public CircularEntity Arc1 {get; set; }
         public CircularEntity Arc2 {get; set; }
 
+        public Entity LeadIn { get; set; }
         public Entity Line1 {get; set; }
         public Entity Line2 {get; set; }
 
@@ -59,6 +60,8 @@ namespace ParserLib.Models
                 Line1.Render(U, Un, isRot, Zradius);
             if (Line2 != null)
                 Line2.Render(U, Un, isRot, Zradius);
+            if (LeadIn != null)
+                LeadIn.Render(U, Un, isRot, Zradius);
             //throw new NotImplementedException();
         }
     }

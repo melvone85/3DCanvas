@@ -87,11 +87,19 @@ namespace Canvas3DViewer
                         else if (item.EntityType == EEntityType.Arc)
                         {
                             DrawArc(item as ArcMove);
+                        }                        
+                        else if (item.EntityType == EEntityType.Hole)
+                        {
+                            var hole = item as HoleMoves;
+                            DrawLine(hole.LeadIn as LinearMove);
+                            DrawArc(hole.Circle as ArcMove);
+                            
                         }
                         else if (item.EntityType == EEntityType.Slot)
                         {
                             var slot = item as SlotMove;
 
+                            DrawLine(slot.LeadIn as LinearMove);
                             DrawArc(slot.Arc1 as ArcMove);
                             DrawLine(slot.Line1 as LinearMove);
                             DrawArc(slot.Arc2 as ArcMove);
@@ -100,7 +108,7 @@ namespace Canvas3DViewer
                         else if (item.EntityType == EEntityType.Keyhole)
                         {
                             var keyhole = item as KeyholeMoves;
-
+                            DrawLine(keyhole.LeadIn as LinearMove);
                             DrawArc(keyhole.Arc1 as ArcMove);
                             DrawLine(keyhole.Line1 as LinearMove);
                             DrawArc(keyhole.Arc2 as ArcMove);
@@ -110,6 +118,7 @@ namespace Canvas3DViewer
                         {
                             var poly = item as PolyMoves;
 
+                            DrawLine(poly.LeadIn as LinearMove);
                             foreach (var l in poly.Lines)
                             {
                                 DrawLine(l as LinearMove);
@@ -118,7 +127,7 @@ namespace Canvas3DViewer
                         else if (item.EntityType == EEntityType.Rect)
                         {
                             var rect = item as RectMoves;
-
+                            DrawLine(rect.LeadIn as LinearMove);
                             foreach (var l in rect.Lines)
                             {
                                 DrawLine(l as LinearMove);

@@ -13,5 +13,7 @@ namespace ParserLib.Interfaces
         CircularEntity Arc2 { get; set; }
         Entity Line1 { get; set; }
         Entity Line2 { get; set; }
+
+        Entity LeadIn { get; set; }
     }
 }

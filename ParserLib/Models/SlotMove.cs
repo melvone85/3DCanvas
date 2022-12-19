@@ -12,6 +12,9 @@ namespace ParserLib.Models
         public Entity Line1 { get; set; }
         public Entity Line2 { get; set; }
 
+        public Entity LeadIn { get; set; }
+
+
         public override Tuple<double, double, double, double> BoundingBox
         {
             get
@@ -46,6 +49,8 @@ namespace ParserLib.Models
 
         public override TechnoHelper.EEntityType EntityType => TechnoHelper.EEntityType.Slot;
 
+        
+
         public override void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {
             if (Arc1 != null)
@@ -55,7 +60,9 @@ namespace ParserLib.Models
             if (Line1 != null)
                 Line1.Render(U, Un, isRot, Zradius);
             if (Line2 != null)
-                Line2.Render(U, Un, isRot, Zradius);
+                Line2.Render(U, Un, isRot, Zradius); 
+            if (LeadIn != null)
+                LeadIn.Render(U, Un, isRot, Zradius);
         }
     }
 }

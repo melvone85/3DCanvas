@@ -10,5 +10,7 @@ namespace ParserLib.Interfaces
         Point3D CenterPoint { get; set; }
         Point3D VertexPoint { get; set; }
         List<LinearMove> Lines { get; set; }
+
+        Entity LeadIn { get; set; }
     }
 }

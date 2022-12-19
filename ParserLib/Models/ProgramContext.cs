@@ -81,6 +81,13 @@ namespace ParserLib.Models
                     CalculateMinMaxFromBaseEntity(keyHole.Arc2);
                     CalculateMinMaxFromBaseEntity(keyHole.Line1);
                     CalculateMinMaxFromBaseEntity(keyHole.Line2);
+                }                
+                else if (LastEntity.EntityType == EEntityType.Hole)
+                {
+                    var hole = LastEntity as IHole;
+
+                    CalculateMinMaxFromBaseEntity(hole.Circle);
+
                 }
                 else
                 {

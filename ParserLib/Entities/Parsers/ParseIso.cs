@@ -306,13 +306,15 @@ namespace ParserLib.Services.Parsers
                 baseEntity.Is2DProgram = programContext.Is2DProgram;
 
                 if (baseEntity.EntityType == EEntityType.Rect)
-                    programContext.LastHeadPosition = (baseEntity as RectMoves).Lines.Last().EndPoint;
+                    programContext.LastHeadPosition = (baseEntity as RectMoves).LeadIn.EndPoint;
                 else if (baseEntity.EntityType == EEntityType.Slot)
-                    programContext.LastHeadPosition = (baseEntity as SlotMove).Line2.EndPoint;
+                    programContext.LastHeadPosition = (baseEntity as SlotMove).LeadIn.EndPoint;
                 else if (baseEntity.EntityType == EEntityType.Poly)
-                    programContext.LastHeadPosition = (baseEntity as PolyMoves).Lines.Last().EndPoint;
+                    programContext.LastHeadPosition = (baseEntity as PolyMoves).LeadIn.EndPoint;
                 else if (baseEntity.EntityType == EEntityType.Keyhole)
-                    programContext.LastHeadPosition = (baseEntity as KeyholeMoves).Line2.EndPoint;
+                    programContext.LastHeadPosition = (baseEntity as KeyholeMoves).LeadIn.EndPoint;
+                else if (baseEntity.EntityType == EEntityType.Hole)
+                    programContext.LastHeadPosition = (baseEntity as HoleMoves).LeadIn.EndPoint;
                 else
                     programContext.LastHeadPosition = (baseEntity as Entity).EndPoint;
 
@@ -477,10 +479,6 @@ namespace ParserLib.Services.Parsers
             BuildMove(ref entity, regexMatches, programContext);
             e.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, (entity as IEntity).EndPoint, programContext.IsIncremental ? programContext.LastEntity.EndPoint : new Point3D(0, 0, 0));
             GeoHelper.Add2DMoveProperties(ref e, isClockwise);
-            Console.WriteLine(e.ToString());
-            Console.WriteLine(e.CenterPoint.ToString());
-
-
             return e;
         }
 
@@ -522,15 +520,15 @@ namespace ParserLib.Services.Parsers
         {
             if (p3 != null)
             {
-                return new Point3D((p1.X + p2.X + p3.X), (p1.Y + p2.Y + p3.Y), (p1.Z + p2.Z + p3.Z));// programContext.Is2DProgram ? 0 : (p1.Z + p2.Z + p3.Z));
+                return new Point3D((p1.X + p2.X + p3.X), (p1.Y + p2.Y + p3.Y), (p1.Z + p2.Z + p3.Z));
             }
             else if (p2 != null)
             {
-                return new Point3D((p1.X + p2.X), (p1.Y + p2.Y), programContext.Is2DProgram ? 0 : (p1.Z + p2.Z));
+                return new Point3D((p1.X + p2.X), (p1.Y + p2.Y),  (p1.Z + p2.Z));
             }
             else if (p1 != null)
             {
-                return new Point3D((p1.X), (p1.Y), programContext.Is2DProgram ? 0 : p1.Z);
+                return new Point3D((p1.X), (p1.Y), p1.Z);
             }
 
             return new Point3D(0, 0, 0);
@@ -598,20 +596,47 @@ namespace ParserLib.Services.Parsers
 
                 var radius = Converter(macroParFounded[6].Value);
 
-                entity = new ArcMove
-                {
-                    IsStroked = true,
-                    IsLargeArc = true,
+                //entity = new ArcMove
+                //{
+                //    IsStroked = true,
+                //    IsLargeArc = true,
+                //    SourceLine = programContext.SourceLine,
+                //    IsBeamOn = programContext.IsBeamOn,
+                //    LineColor = programContext.ContourLineType,
+                //    OriginalLine = line,
+                //    Radius = Math.Abs(radius),//Aggiunto math.abs perchè... Se si vedessero comportamenti strani, verificare che la direzione della normale segua la regola della mano sinistra rispetto al verso di percorrenza dell'arco.
+                //    CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC),
+                //    NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                //};
+                entity = new HoleMoves
+                {   
                     SourceLine = programContext.SourceLine,
                     IsBeamOn = programContext.IsBeamOn,
                     LineColor = programContext.ContourLineType,
                     OriginalLine = line,
-                    Radius = Math.Abs(radius),//Aggiunto math.abs perchè... Se si vedessero comportamenti strani, verificare che la direzione della normale segua la regola della mano sinistra rispetto al verso di percorrenza dell'arco.
-                    CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC),
-                    NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                    Radius= radius,
+                    Circle = new ArcMove
+                    {
+                        SourceLine = programContext.SourceLine,
+                        IsBeamOn = programContext.IsBeamOn,
+                        LineColor = programContext.ContourLineType,
+                        OriginalLine = line,
+                        IsStroked = true,
+                        IsLargeArc = false,
+                        Radius = Math.Abs(radius),//Aggiunto math.abs perchè... Se si vedessero comportamenti strani, verificare che la direzione della normale segua la regola della mano sinistra rispetto al verso di percorrenza dell'arco.
+                        CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC),
+                        NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                    },
+                    LeadIn = new LinearMove {
+                        SourceLine = programContext.SourceLine,
+                        OriginalLine = line,
+                        StartPoint= programContext.LastHeadPosition,
+                    }
+                    
+
                 };
 
-                var holeMacro = entity as ArcMove;
+                var holeMacro = entity as HoleMoves;
                 GeoHelper.GetMoveFromMacroHole(ref holeMacro);
             }
             else if (line.StartsWith("$(SLOT)"))
@@ -678,7 +703,16 @@ namespace ParserLib.Services.Parsers
                         IsBeamOn = programContext.IsBeamOn,
                         LineColor = programContext.ContourLineType,
                         OriginalLine = line,
+                    },
+                    LeadIn = new LinearMove()
+                    {
+                        SourceLine = programContext.SourceLine,
+                        OriginalLine = line,
+                        StartPoint = programContext.LastHeadPosition,
+
                     }
+
+                    
                 };
 
                 var slotMove = entity as SlotMove;
@@ -755,6 +789,13 @@ namespace ParserLib.Services.Parsers
                         IsBeamOn = programContext.IsBeamOn,
                         LineColor = programContext.ContourLineType,
                         OriginalLine = line,
+                    },
+                    LeadIn = new LinearMove()
+                    {
+                        SourceLine = programContext.SourceLine,
+                        OriginalLine = line,
+                        StartPoint = programContext.LastHeadPosition,
+
                     }
 
                 };
@@ -799,7 +840,14 @@ namespace ParserLib.Services.Parsers
                     Radius = radius,
                     VertexPoint = vertexPoint,
                     NormalPoint = normalPoint,
-                    CenterPoint = centerPoint
+                    CenterPoint = centerPoint,
+                    LeadIn = new LinearMove()
+                    {
+                        SourceLine = programContext.SourceLine,
+                        OriginalLine = line,
+                        StartPoint = programContext.LastHeadPosition,
+
+                    }
                 };
 
                 var polyMove = entity as PolyMoves;
@@ -832,8 +880,16 @@ namespace ParserLib.Services.Parsers
                     OriginalLine = line,
                     SidePoint = sidePoint,
                     VertexPoint = vertexPoint,
-                    CenterPoint = centerPoint
+                    CenterPoint = centerPoint,
+                    LeadIn = new LinearMove()
+                    {
+                        SourceLine = programContext.SourceLine,
+                        OriginalLine = line,
+                        StartPoint = programContext.LastHeadPosition,
+
+                    }
                 };
+
 
                 var rectMove = entity as RectMoves;
                 GeoHelper.GetMovesFromMacroRect(ref rectMove);

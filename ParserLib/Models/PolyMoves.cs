@@ -14,6 +14,8 @@ namespace ParserLib.Models
 
         public List<Entity> Lines { get; set; }
 
+        public Entity LeadIn { get; set; }
+
         public override TechnoHelper.EEntityType EntityType => TechnoHelper.EEntityType.Poly;
 
         public override Tuple<double, double, double, double> BoundingBox
@@ -38,6 +40,9 @@ namespace ParserLib.Models
 
         public override void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {
+
+            if (LeadIn != null)
+                LeadIn.Render(U, Un, isRot, Zradius);
             foreach (var item in Lines)
             {
                 item.Render(U, Un, isRot, Zradius);

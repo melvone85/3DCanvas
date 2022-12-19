@@ -23,7 +23,8 @@
             Rapid,
             Poly,
             Rect,
-            Keyhole
+            Keyhole,
+            Hole
         }
     }
 }

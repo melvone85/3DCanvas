@@ -13,10 +13,14 @@ namespace ParserLib.Models
         public Point3D VertexPoint { get; set; }
         public List<LinearMove> Lines { get; set; }
 
+        public Entity LeadIn { get; set; }
+
         public override TechnoHelper.EEntityType EntityType => TechnoHelper.EEntityType.Rect;
 
         public override void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {
+            if (LeadIn != null)
+                LeadIn.Render(U, Un, isRot, Zradius);
             foreach (var item in Lines)
             {
                 item.Render(U, Un, isRot, Zradius);

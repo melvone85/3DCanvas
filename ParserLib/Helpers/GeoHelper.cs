@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using System.Windows.Media.Media3D;
 using ParserLib.Helpers;
 using System.Speech.Recognition.SrgsGrammar;
+using System.Windows.Media.Animation;
+using ParserLib.Interfaces;
 
 namespace ParserLib.Helpers
 {
@@ -64,7 +66,7 @@ namespace ParserLib.Helpers
             {
                 //is a circle
                 double alpha = 0.01;
-                Vector3D rotatedVector = MathHelpers.Rotate_Rodriguez(cSVector, move.Normal, -alpha);
+                Vector3D rotatedVector = MathHelpers.RotateAround(cSVector, move.Normal, -alpha);
                 move.EndPoint = Point3D.Add(move.CenterPoint, rotatedVector * move.Radius);
                 move.IsLargeArc = true;
             }
@@ -134,32 +136,51 @@ namespace ParserLib.Helpers
             return q1 * q1 * (q2 * q2 + q3 * q3 - q1 * q1);
         }
 
-        public static void GetMoveFromMacroHole(ref ArcMove hole)
+        public static void GetMoveFromMacroHole(ref HoleMoves hole)
         {
             //const double alpha = -0.0001745329;
             //Se da fastidio questa tolleranza bisogna introdurre L'elemento ellipse geometry che fà un cerchio
-
+            CircularEntity circle = hole.Circle;
             double maxClosingGap = 0.01; //mm
             double alpha = -maxClosingGap / hole.Radius;
 
             //Se si vedessero comportamenti strani, verificare che la direzione della normale segua la regola della mano sinistra rispetto al verso di percorrenza dell'arco.
 
-            var normalVector = Point3D.Subtract(hole.CenterPoint, hole.NormalPoint);
+            var normalVector = Point3D.Subtract(circle.CenterPoint, circle.NormalPoint);
             normalVector.Normalize();
 
-            var vectorUp = (hole.CenterPoint.X == hole.NormalPoint.X && hole.CenterPoint.Y == hole.NormalPoint.Y) ? new Vector3D(1, 0, 0) : new Vector3D(0, 0, 1);
+            var vectorUp = (circle.CenterPoint.X == circle.NormalPoint.X && circle.CenterPoint.Y == circle.NormalPoint.Y) ? new Vector3D(1, 0, 0) : new Vector3D(0, 0, 1);
 
             var versor = Vector3D.CrossProduct(normalVector, vectorUp);
             versor.Normalize();
 
             var vr = Vector3D.Multiply(versor, hole.Radius);
+            //MathHelpers.Rotate_Rodriguez(vr, normalVector, alpha);
             var rotatedVector = vr * Math.Cos(alpha) + Vector3D.CrossProduct(normalVector, vr) * Math.Sin(alpha) + normalVector * (Vector3D.DotProduct(normalVector, vr) * (1 - Math.Cos(alpha)));
 
-            hole.StartPoint = Vector3D.Add(vr, hole.CenterPoint);
-            hole.ViaPoint = Vector3D.Add(-vr, hole.CenterPoint);
-            hole.EndPoint = Vector3D.Add(rotatedVector, hole.CenterPoint);
+            circle.StartPoint = Vector3D.Add(vr, circle.CenterPoint);
+            circle.ViaPoint = Vector3D.Add(-vr, circle.CenterPoint);
+            circle.EndPoint = Vector3D.Add(rotatedVector, circle.CenterPoint);
 
-            hole.Normal = normalVector;
+            circle.Normal = normalVector;
+            circle.IsLargeArc = true;
+
+            //set LeadIn
+            if (hole.LeadIn.StartPoint != circle.CenterPoint)
+            {
+                Vector3D centerToApproach = Point3D.Subtract(hole.LeadIn.StartPoint, circle.CenterPoint);
+            
+                var CALenght = centerToApproach.Length;
+                centerToApproach.Normalize();
+                hole.LeadIn.EndPoint = Point3D.Add(hole.LeadIn.StartPoint,centerToApproach * (circle.Radius - CALenght) );
+            }
+            else
+            {
+                hole.LeadIn.EndPoint = circle.StartPoint;
+            }
+
+            hole.LeadIn.IsBeamOn = circle.IsBeamOn;
+            hole.LeadIn.LineColor = circle.LineColor;
         }
 
         public static void GetMovesFromMacroSlot(ref SlotMove slot)
@@ -215,6 +236,17 @@ namespace ParserLib.Helpers
 
             slot.Line2.StartPoint = slot.Arc2.EndPoint;
             slot.Line2.EndPoint = slot.Arc1.StartPoint;
+
+            //lead in
+            slot.LeadIn.EndPoint = MathHelpers.GetClosestPoint(slot.LeadIn.StartPoint, new List<Point3D> {
+                slot.Line1.StartPoint,
+                slot.Line1.EndPoint,
+                slot.Line2.StartPoint,
+                slot.Line2.EndPoint,
+
+            });
+            slot.LeadIn.LineColor = slot.Arc1.LineColor;
+            slot.LeadIn.IsBeamOn = slot.Arc1.IsBeamOn;
         }
 
         public static void GetMovesFromMacroKeyhole(ref KeyholeMoves keyhole)
@@ -256,6 +288,18 @@ namespace ParserLib.Helpers
             keyhole.Line2.StartPoint = p6;
             keyhole.Line2.EndPoint = p7;
 
+
+            //lead in
+            keyhole.LeadIn.EndPoint = MathHelpers.GetClosestPoint(keyhole.LeadIn.StartPoint, new List<Point3D> {
+                keyhole.Line1.StartPoint,
+                keyhole.Line1.EndPoint,
+                keyhole.Line2.StartPoint,
+                keyhole.Line2.EndPoint,
+
+            });
+            keyhole.LeadIn.LineColor = keyhole.Arc1.LineColor;
+            keyhole.LeadIn.IsBeamOn = keyhole.Arc1.IsBeamOn;
+
         }
 
         public static void GetMovesFromMacroPoly(ref PolyMoves poly)
@@ -290,23 +334,49 @@ namespace ParserLib.Helpers
                 vertices[i] = newVertex;
             }
             // aggiungo in coda ai vertici il primo vertice
-            vertices[poly.Sides] = poly.VertexPoint; // puoi controllare che stia funzionando bene verificando che  poly.Vertices[0] == poly.VertexPoint;
+            //vertices[poly.Sides] = poly.VertexPoint; // puoi controllare che stia funzionando bene verificando che  poly.Vertices[0] == poly.VertexPoint;
 
             poly.Lines = new List<Entity>();
 
-            for (int i = 0; i < poly.Sides; i++)
+            //lead in
+
+            int index;
+            (poly.LeadIn.EndPoint, index) = MathHelpers.GetClosestPointID(poly.LeadIn.StartPoint, vertices);
+            vertices[poly.Sides] = poly.VertexPoint;
+            while (poly.Lines.Count < poly.Sides)
             {
                 poly.Lines.Add(
-                    new LinearMove()
-                    {
-                        StartPoint = vertices[i],
-                        EndPoint = vertices[i + 1],
-                        SourceLine = poly.SourceLine,
-                        IsBeamOn = poly.IsBeamOn,
-                        LineColor = poly.LineColor,
-                        OriginalLine = poly.OriginalLine,
-                    });
+                     new LinearMove()
+                     {
+                         StartPoint = vertices[index],
+                         EndPoint = vertices[index + 1],
+                         SourceLine = poly.SourceLine,
+                         IsBeamOn = poly.IsBeamOn,
+                         LineColor = poly.LineColor,
+                         OriginalLine = poly.OriginalLine,
+                     });
+                index++;
+                if (index >= poly.Sides) index = 0;
             }
+
+            //poly.LeadIn.EndPoint = MathHelpers.GetClosestPoint(poly.LeadIn.StartPoint,vertices);
+            //for (int i = 0; i < poly.Sides; i++)
+            //{
+            //    poly.Lines.Add(
+            //        new LinearMove()
+            //        {
+            //            StartPoint = vertices[i],
+            //            EndPoint = vertices[i + 1],
+            //            SourceLine = poly.SourceLine,
+            //            IsBeamOn = poly.IsBeamOn,
+            //            LineColor = poly.LineColor,
+            //            OriginalLine = poly.OriginalLine,
+            //        });
+            //}
+            poly.LeadIn.LineColor = poly.Lines[0].LineColor;
+            poly.LeadIn.IsBeamOn = poly.Lines[0].IsBeamOn;
+
+
         }
 
         public static void GetMovesFromMacroRect(ref RectMoves rect)
@@ -329,10 +399,10 @@ namespace ParserLib.Helpers
             var l1 = modCV1 * Math.Cos(alpha);
             var l2 = modCV1 * Math.Sin(alpha);
 
-            //var mAB = Point3D.Subtract(rect.CenterPoint, (d2 * l2));
-            //var mBC = Point3D.Add(rect.CenterPoint, (d1 * l1));
-            //var mCD = Point3D.Add(rect.CenterPoint, (d2 * l2));
-            //var mDA = Point3D.Subtract(rect.CenterPoint, (d1 * l1));
+            var mAB = Point3D.Subtract(rect.CenterPoint, (d2 * l2));
+            var mBC = Point3D.Add(rect.CenterPoint, (d1 * l1));
+            var mCD = Point3D.Add(rect.CenterPoint, (d2 * l2));
+            var mDA = Point3D.Subtract(rect.CenterPoint, (d1 * l1));
 
             var vA = rect.VertexPoint;
             var vB = Point3D.Add(vA, (2 * l1 * d1));
@@ -385,6 +455,10 @@ namespace ParserLib.Helpers
                 OriginalLine = rect.OriginalLine,
             }
             );
+
+            rect.LeadIn.EndPoint = MathHelpers.GetClosestPoint(rect.LeadIn.StartPoint, new Point3D[]{ mAB,mBC,mCD,mDA});
+            rect.LeadIn.LineColor = rect.Lines[0].LineColor;
+            rect.LeadIn.IsBeamOn = rect.Lines[0].IsBeamOn;
 
 
 
