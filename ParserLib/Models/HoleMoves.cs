@@ -11,13 +11,13 @@ using System.Windows.Shapes;
 
 namespace ParserLib.Models
 {
-    public class HoleMoves : Entity, IHole
+    public class HoleMoves : CircularEntity,IHole
     {
         public CircularEntity Circle { get; set; }
+        
         public Entity LeadIn { get; set; }
-        public double Radius { get; set; }
-        public override TechnoHelper.EEntityType EntityType => TechnoHelper.EEntityType.Hole;
 
+        public override TechnoHelper.EEntityType EntityType => TechnoHelper.EEntityType.Hole;
 
         public override Tuple<double, double, double, double> BoundingBox
         {

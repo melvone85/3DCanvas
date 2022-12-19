@@ -13,10 +13,7 @@ namespace ParserLib.Interfaces
         CircularEntity Circle { get; set; } 
         Entity LeadIn { get; set; }
 
-        double Radius { get; set; }
-
-
-        
+     
         
     }
 }

@@ -84,7 +84,7 @@ namespace ParserLib.Models
                 }                
                 else if (LastEntity.EntityType == EEntityType.Hole)
                 {
-                    var hole = LastEntity as IHole;
+                    var hole = LastEntity as HoleMoves;
 
                     CalculateMinMaxFromBaseEntity(hole.Circle);
 
